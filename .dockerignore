@@ -1,0 +1,11 @@
+.git
+**/.git
+**/__pycache__
+**/*.pyc
+web
+web/**
+node_modules
+**/.next
+data
+models-volume
+*.db

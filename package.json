@@ -1,0 +1,9 @@
+{
+  "name": "ai-photo-booth",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke:workflow": "node scripts/validate-workflow.mjs",
+    "smoke:runpod": "node worker/scripts/run-smoke.mjs"
+  }
+}

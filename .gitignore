@@ -1,0 +1,18 @@
+node_modules
+web/node_modules
+web/.next
+web/data
+data
+models-volume
+.env
+.env.*
+!.env.example
+!.env*.example
+**/__pycache__/
+**/*.pyc
+custom nodes/**/.env
+web/.env
+web/.env.local
+web/dev.db
+*.tsbuildinfo
+.DS_Store

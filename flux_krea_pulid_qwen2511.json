@@ -1,0 +1,483 @@
+{
+  "108": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "120": {
+    "inputs": {
+      "image": "F9E2C384-55C5-4B48-86D5-EBC22C041861_1_105_c.jpeg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "123": {
+    "inputs": {
+      "clip_name1": "t5\\google_t5-v1_1-xxl_encoderonly-fp8_e4m3fn.safetensors",
+      "clip_name2": "clip_l.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "196": {
+    "inputs": {
+      "guidance": 4.5,
+      "conditioning": [
+        "203",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "201": {
+    "inputs": {
+      "samples": [
+        "247",
+        0
+      ],
+      "vae": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "203": {
+    "inputs": {
+      "text": "Refine the supplied portrait into a premium photorealistic commercial event portrait while preserving the existing composition, pose, natural body proportions, physical build, wardrobe, props, environmental effects, and overall scene design established in the supplied image. Keep the subject’s silhouette and framing consistent with the supplied image.\n\nImprove facial realism, natural skin texture, sharp eyes, realistic hair detail, accurate hands and anatomy, fabric detail, lighting realism, dimensional rim lighting, atmospheric depth, and clean subject separation. Maintain corporate-appropriate styling and preserve the established visual theme of the image.\n\nHigh-end commercial portrait photography, polished editorial finish, cinematic lighting, realistic detail, natural anatomy, premium event activation aesthetic. Do not redesign the scene or significantly alter the subject’s pose, body shape, clothing, props, theme elements, or framing.",
+      "clip": [
+        "123",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "204": {
+    "inputs": {
+      "unet_name": "FLUX1\\flux1-krea-dev_float8_e4m3fn_learned_svd.safetensors",
+      "weight_dtype": "fp8_e4m3fn"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "239": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "123",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "247": {
+    "inputs": {
+      "seed": 25336217950692,
+      "steps": 24,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 0.5,
+      "model": [
+        "267",
+        0
+      ],
+      "positive": [
+        "196",
+        0
+      ],
+      "negative": [
+        "239",
+        0
+      ],
+      "latent_image": [
+        "292",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "257": {
+    "inputs": {
+      "enabled": true,
+      "swap_model": "inswapper_128.onnx",
+      "facedetection": "retinaface_resnet50",
+      "face_restore_model": "GFPGANv1.4.pth",
+      "face_restore_visibility": 0.9,
+      "codeformer_weight": 1,
+      "detect_gender_input": "no",
+      "detect_gender_source": "no",
+      "input_faces_index": "0",
+      "source_faces_index": "0",
+      "console_log_level": 1,
+      "input_image": [
+        "201",
+        0
+      ],
+      "source_image": [
+        "120",
+        0
+      ]
+    },
+    "class_type": "ReActorFaceSwap",
+    "_meta": {
+      "title": "ReActor 🌌 Fast Face Swap"
+    }
+  },
+  "265": {
+    "inputs": {
+      "images": [
+        "257",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "266": {
+    "inputs": {
+      "pulid_file": "pulid_flux_v0.9.1.safetensors"
+    },
+    "class_type": "GRPulidFluxModelLoader",
+    "_meta": {
+      "title": "GR Load PuLID Flux Model"
+    }
+  },
+  "267": {
+    "inputs": {
+      "weight": 0.95,
+      "start_at": 0,
+      "end_at": 1,
+      "use_face_number": false,
+      "face_number": 0,
+      "blur": 0.01,
+      "face_select": "most_prominent",
+      "fusion": "mean",
+      "fusion_weight_max": 1,
+      "fusion_weight_min": 0,
+      "train_step": 1000,
+      "use_gray": true,
+      "model": [
+        "204",
+        0
+      ],
+      "pulid_flux": [
+        "266",
+        0
+      ],
+      "eva_clip": [
+        "268",
+        0
+      ],
+      "face_analysis": [
+        "269",
+        0
+      ],
+      "image": [
+        "120",
+        0
+      ]
+    },
+    "class_type": "GRApplyPulidFlux",
+    "_meta": {
+      "title": "GR Apply PuLID Flux"
+    }
+  },
+  "268": {
+    "inputs": {},
+    "class_type": "GRPulidFluxEvaClipLoader",
+    "_meta": {
+      "title": "GR Load Eva Clip (PuLID Flux)"
+    }
+  },
+  "269": {
+    "inputs": {
+      "provider": "CPU"
+    },
+    "class_type": "GRPulidFluxInsightFaceLoader",
+    "_meta": {
+      "title": "GR Load InsightFace (PuLID Flux)"
+    }
+  },
+  "270": {
+    "inputs": {
+      "images": [
+        "201",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "277": {
+    "inputs": {
+      "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "278": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "279": {
+    "inputs": {
+      "unet_name": "qwen_image_edit_2511_fp8mixed.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "280": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "279",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "281": {
+    "inputs": {
+      "shift": 3.1,
+      "model": [
+        "280",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow"
+    }
+  },
+  "282": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "281",
+        0
+      ]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFGNorm"
+    }
+  },
+  "283": {
+    "inputs": {
+      "image": [
+        "120",
+        0
+      ]
+    },
+    "class_type": "FluxKontextImageScale",
+    "_meta": {
+      "title": "FluxKontextImageScale"
+    }
+  },
+  "284": {
+    "inputs": {
+      "prompt": "Transform the person in the input image into a cinematic half-body portrait, framed from the waist or hips up, emerging through a dramatic smoke-filled environment. Preserve the person’s recognizable facial features, hairstyle, overall appearance, natural body build, body proportions, and general pose direction. Keep the subject facing the camera with a confident, powerful expression, with the upper body, arms, and hands clearly visible.\n\nDress the subject in polished, corporate-appropriate attire that feels refined, stylish, and event-ready. The wardrobe should look professional and elevated, not costume-like, casual, or overly revealing.\n\nCreate a dramatic smoke atmosphere inspired by a premium event entrance or sports tunnel effect. The smoke should feel like it is parting around the subject rather than covering them, concentrated mostly behind the subject and along the sides of the frame. Add glowing embers and subtle sparks behind and around the subject to create warmth, depth, and energy. Use warm orange, amber, and gold lighting to create cinematic rim light around the hair, shoulders, and body, while keeping the face and outfit clearly visible and sharply defined.\n\nEmphasize realistic skin texture, natural anatomy, realistic hair detail, accurate hands and arms, detailed clothing, believable smoke and ember effects, and a premium commercial portrait finish. The final image should feel dramatic, immersive, polished, photorealistic, and high-end.\n\nKeep the composition centered and half-body. The subject should occupy most of the frame.",
+      "clip": [
+        "277",
+        0
+      ],
+      "vae": [
+        "278",
+        0
+      ],
+      "image1": [
+        "283",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Qwen 2511 — Main Transformation Prompt"
+    }
+  },
+  "285": {
+    "inputs": {
+      "prompt": "",
+      "clip": [
+        "277",
+        0
+      ],
+      "vae": [
+        "278",
+        0
+      ],
+      "image1": [
+        "283",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlus",
+    "_meta": {
+      "title": "Qwen 2511 — Negative"
+    }
+  },
+  "286": {
+    "inputs": {
+      "reference_latents_method": "index_timestep_zero",
+      "conditioning": [
+        "284",
+        0
+      ]
+    },
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "_meta": {
+      "title": "Edit Model Reference Method"
+    }
+  },
+  "287": {
+    "inputs": {
+      "reference_latents_method": "index_timestep_zero",
+      "conditioning": [
+        "285",
+        0
+      ]
+    },
+    "class_type": "FluxKontextMultiReferenceLatentMethod",
+    "_meta": {
+      "title": "Edit Model Reference Method"
+    }
+  },
+  "288": {
+    "inputs": {
+      "pixels": [
+        "283",
+        0
+      ],
+      "vae": [
+        "278",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "289": {
+    "inputs": {
+      "seed": 658112368448171,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "282",
+        0
+      ],
+      "positive": [
+        "286",
+        0
+      ],
+      "negative": [
+        "287",
+        0
+      ],
+      "latent_image": [
+        "288",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Qwen 2511 — 4-Step Edit"
+    }
+  },
+  "290": {
+    "inputs": {
+      "samples": [
+        "289",
+        0
+      ],
+      "vae": [
+        "278",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "291": {
+    "inputs": {
+      "images": [
+        "290",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "STAGE 1 — Qwen Result"
+    }
+  },
+  "292": {
+    "inputs": {
+      "pixels": [
+        "290",
+        0
+      ],
+      "vae": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "Krea img2img source (Qwen result)"
+    }
+  }
+}

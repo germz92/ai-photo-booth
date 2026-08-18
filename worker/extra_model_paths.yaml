@@ -1,0 +1,35 @@
+comfyui:
+  base_path: /comfyui/
+  checkpoints: models/checkpoints/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  configs: models/configs/
+  controlnet: models/controlnet/
+  diffusion_models: models/diffusion_models/
+  embeddings: models/embeddings/
+  facerestore_models: models/facerestore_models/
+  insightface: models/insightface/
+  loras: models/loras/
+  pulid: models/pulid/
+  text_encoders: models/text_encoders/
+  unet: models/unet/
+  upscale_models: models/upscale_models/
+  vae: models/vae/
+
+runpod_worker_comfy:
+  base_path: /runpod-volume
+  checkpoints: models/checkpoints/
+  clip: models/clip/
+  clip_vision: models/clip_vision/
+  configs: models/configs/
+  controlnet: models/controlnet/
+  diffusion_models: models/diffusion_models/
+  embeddings: models/embeddings/
+  facerestore_models: models/facerestore_models/
+  insightface: models/insightface/
+  loras: models/loras/
+  pulid: models/pulid/
+  text_encoders: models/text_encoders/
+  unet: models/unet/
+  upscale_models: models/upscale_models/
+  vae: models/vae/

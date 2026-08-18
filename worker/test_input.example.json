@@ -1,0 +1,11 @@
+{
+  "input": {
+    "workflow": { "_comment": "Replace this object with the contents of workflows/booth-api.json. Processor injects node 120 image name, node 247 seed, node 289 seed." },
+    "images": [
+      {
+        "name": "guest.jpg",
+        "image": "data:image/jpeg;base64,REPLACE_WITH_SMALL_JPEG_BASE64"
+      }
+    ]
+  }
+}
