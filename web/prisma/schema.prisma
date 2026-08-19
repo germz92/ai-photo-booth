@@ -1,20 +1,104 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/db"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
+model AdminUser {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  email           String    @unique
+  passwordHash    String
+  name            String    @default("")
+  role            String    @default("user")
+  status          String    @default("active")
+  credits         Int       @default(0)
+  inviteTokenHash String    @default("")
+  inviteExpiresAt DateTime?
+  resetTokenHash  String    @default("")
+  resetExpiresAt  DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  events          Event[]
+  ledger          CreditLedger[]
+}
+
+model CreditLedger {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  user         AdminUser @relation(fields: [userId], references: [id])
+  delta        Int
+  balanceAfter Int
+  reason       String
+  jobId        String?   @db.ObjectId
+  note         String    @default("")
+  createdBy    String    @default("system")
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Event {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String?   @db.ObjectId
+  user          AdminUser? @relation(fields: [userId], references: [id])
+  name          String
+  eventDate     DateTime
+  status        String    @default("draft")
+  batch         Int       @default(1)
+  allowUpload   Boolean   @default(true)
+  wallTitle     String    @default("")
+  wallLogoKey   String    @default("")
+  showWallTitle     Boolean  @default(true)
+  overlayEnabled    Boolean  @default(false)
+  overlayLogoKey    String   @default("")
+  overlayPlacement  String   @default("top-center")
+  overlayScale      Float    @default(0.18)
+  overlayX          Float    @default(0.5)
+  overlayY          Float    @default(0.045)
+  overlaySampleKey  String   @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  themes        Theme[]
+  jobs          Job[]
+
+  @@index([status])
+  @@index([userId])
+}
+
+model Theme {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId   String   @db.ObjectId
+  event     Event    @relation(fields: [eventId], references: [id])
+  title     String
+  prompt    String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  jobs      Job[]
+
+  @@index([eventId])
+}
+
 model Job {
-  id              String    @id @default(cuid())
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId         String    @db.ObjectId
+  event           Event     @relation(fields: [eventId], references: [id])
+  themeId         String    @db.ObjectId
+  theme           Theme     @relation(fields: [themeId], references: [id])
   status          String    @default("queued")
   email           String?
   phone           String?
   consent         Boolean
   originalKey     String
   outputKey       String?
+  outputKeys      String[]  @default([])
+  batch           Int       @default(1)
   runpodJobId     String?   @unique
   resultToken     String    @unique
   resultExpiresAt DateTime
@@ -27,8 +111,10 @@ model Job {
   error           String?
   kreaSeed        String
   qwenSeed        String
+  prompt          String    @default("")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([status])
+  @@index([eventId])
 }

@@ -1,7 +1,8 @@
 import { connection } from "next/server";
-import { linkExpired } from "@/lib/jobs";
+import { APP_NAME } from "@/lib/brand";
+import { jobOutputKeys, linkExpired } from "@/lib/jobs";
 import { prisma } from "@/lib/prisma";
-import { objectUrl } from "@/lib/storage";
+import { ResultPending } from "./ResultPending";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function ResultPage({
   if (!job) {
     return (
       <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-6 py-16 text-center">
-        <h1 className="text-2xl font-medium">Portrait not found</h1>
+        <h1 className="text-2xl font-light tracking-[0.12em] uppercase">Portrait not found</h1>
         <p className="mt-3 text-muted">This link is invalid.</p>
       </main>
     );
@@ -27,36 +28,36 @@ export default async function ResultPage({
   if (linkExpired(job.resultExpiresAt)) {
     return (
       <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-6 py-16 text-center">
-        <h1 className="text-2xl font-medium">This link has expired</h1>
+        <h1 className="text-2xl font-light tracking-[0.12em] uppercase">This link has expired</h1>
         <p className="mt-3 text-muted">Portrait links are available for 48 hours.</p>
       </main>
     );
   }
 
-  if (job.status !== "complete" || !job.outputKey) {
-    return (
-      <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-6 py-16 text-center">
-        <h1 className="text-2xl font-medium">Still working</h1>
-        <p className="mt-3 text-muted">Refresh in a moment. Your portrait is still being generated.</p>
-      </main>
-    );
+  const keys = jobOutputKeys(job);
+  if (job.status !== "complete" || !keys.length) {
+    return <ResultPending />;
   }
 
-  const remote = await objectUrl(job.outputKey);
-  const src = remote || `/api/r/${token}/image`;
-
   return (
-    <main className="mx-auto flex min-h-full max-w-3xl flex-col px-6 py-12">
-      <p className="text-xs tracking-[0.28em] uppercase text-accent">AI Photo Booth</p>
-      <h1 className="mt-4 text-3xl font-medium tracking-tight">Your portrait</h1>
-      <p className="mt-2 text-muted">Save this image. The link expires in 48 hours.</p>
-      <div className="mt-8 overflow-hidden rounded-sm ring-1 ring-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="Generated portrait" className="w-full bg-black" />
+    <main className="mx-auto flex min-h-full max-w-5xl flex-col px-6 py-12">
+      <p className="text-xs tracking-[0.28em] uppercase text-accent">{APP_NAME}</p>
+      <h1 className="mt-4 text-3xl font-light tracking-[0.12em] uppercase">Your portrait</h1>
+      <p className="mt-2 text-muted">Save your image{keys.length > 1 ? "s" : ""}. The link expires in 48 hours.</p>
+      <div className={`mt-8 grid gap-4 ${keys.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {keys.map((_, index) => {
+          const src = `/api/r/${token}/image?i=${index}`;
+          return (
+            <div key={src} className="overflow-hidden rounded border border-white/10 bg-black">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Generated portrait ${index + 1}`} className="w-full" />
+              <a className="booth-button m-4" href={src} download={`portrait-${index + 1}.png`}>
+                Download {keys.length > 1 ? index + 1 : ""}
+              </a>
+            </div>
+          );
+        })}
       </div>
-      <a className="booth-button mt-8 self-start" href={src} download="portrait.jpg">
-        Download
-      </a>
     </main>
   );
 }

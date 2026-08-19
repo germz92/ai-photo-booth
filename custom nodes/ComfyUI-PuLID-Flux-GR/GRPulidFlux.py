@@ -20,6 +20,29 @@ from .encoders_flux import IDFormer, PerceiverAttentionCA
 INSIGHTFACE_DIR = os.path.join(folder_paths.models_dir, "insightface")
 MODELS_DIR = os.path.join(folder_paths.models_dir, "pulid")
 
+
+def _flatten_insightface_model_pack(name: str) -> None:
+    """InsightFace extractall() puts zip-root folders at models/<name>/<name>/*.onnx."""
+    pack_dir = os.path.join(INSIGHTFACE_DIR, "models", name)
+    nested = os.path.join(pack_dir, name)
+    if not os.path.isdir(nested):
+        return
+    logging.warning("Flattening nested InsightFace pack %s -> %s", nested, pack_dir)
+    for fname in os.listdir(nested):
+        src = os.path.join(nested, fname)
+        dst = os.path.join(pack_dir, fname)
+        if not os.path.isfile(src):
+            continue
+        if os.path.exists(dst):
+            os.remove(src)
+        else:
+            os.replace(src, dst)
+    try:
+        os.rmdir(nested)
+    except OSError:
+        pass
+
+
 if "pulid" not in folder_paths.folder_names_and_paths:
     current_paths = [MODELS_DIR]
 else:
@@ -273,7 +296,12 @@ class GRPulidFluxInsightFaceLoader:
     CATEGORY = "pulid"
 
     def load_insightface(self, provider):
-        self.model = FaceAnalysis(name="antelopev2", root=INSIGHTFACE_DIR, providers=[provider + 'ExecutionProvider',]) # alternative to buffalo_l
+        _flatten_insightface_model_pack("antelopev2")
+        try:
+            self.model = FaceAnalysis(name="antelopev2", root=INSIGHTFACE_DIR, providers=[provider + 'ExecutionProvider',]) # alternative to buffalo_l
+        except AssertionError:
+            _flatten_insightface_model_pack("antelopev2")
+            self.model = FaceAnalysis(name="antelopev2", root=INSIGHTFACE_DIR, providers=[provider + 'ExecutionProvider',])
         self.model.prepare(ctx_id=0, det_size=(640, 640))
 
         return (self.model,)

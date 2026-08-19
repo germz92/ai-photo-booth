@@ -42,5 +42,11 @@ RUN pip install --no-cache-dir cython \
 COPY worker/extra_model_paths.yaml /comfyui/extra_model_paths.yaml
 COPY worker/scripts/check-nodes.py /usr/local/bin/check-booth-nodes.py
 COPY worker/required_nodes.txt /comfyui/required_nodes.txt
+COPY worker/scripts/start-wrapper.sh /start-wrapper.sh
+
+# Strip CRLF in case the host is Windows; ReActor needs these links before ComfyUI loads.
+RUN sed -i 's/\r$//' /start-wrapper.sh && chmod +x /start-wrapper.sh
 
 WORKDIR /comfyui
+
+CMD ["/start-wrapper.sh"]

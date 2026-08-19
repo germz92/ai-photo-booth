@@ -1,19 +1,21 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: booth
-      POSTGRES_PASSWORD: booth
-      POSTGRES_DB: booth
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
+      - "27018:27017"
     volumes:
-      - booth_pg:/var/lib/postgresql/data
+      - booth_mongo:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U booth -d booth"]
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}); }\"",
+        ]
       interval: 5s
-      timeout: 5s
-      retries: 10
+      timeout: 10s
+      retries: 20
+      start_period: 10s
 
 volumes:
-  booth_pg:
+  booth_mongo:

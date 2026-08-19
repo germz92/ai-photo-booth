@@ -41,7 +41,8 @@ Expected layout (serverless mount is `/runpod-volume`):
   loras/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
   pulid/pulid_flux_v0.9.1.safetensors
   insightface/inswapper_128.onnx
-  insightface/models/buffalo_l/
+  insightface/models/buffalo_l/*.onnx
+  insightface/models/antelopev2/*.onnx
   facerestore_models/GFPGANv1.4.pth
 ```
 
@@ -108,6 +109,22 @@ curl -X POST "https://api.runpod.ai/v2/$ENDPOINT_ID/run" \
 Poll `https://api.runpod.ai/v2/$ENDPOINT_ID/status/$JOB_ID` until `COMPLETED`. `output.images` should contain one `SaveImage` result.
 
 Warm-worker runtime target: **30–90 seconds**. First job after a cold start can take several minutes while weights load from the volume.
+
+## Troubleshooting: `swap_model: 'inswapper_128.onnx' not in []`
+
+ReActor lists swap models by globbing **`/comfyui/models/insightface/*.onnx`**. It ignores `extra_model_paths.yaml`, so a file that only exists on the volume at `/runpod-volume/models/insightface/inswapper_128.onnx` looks like an empty list.
+
+The worker image wraps `/start.sh` and symlinks `insightface` and `facerestore_models` from the volume. If you are still on `germz92/ai-photo-booth-worker:v1`, either rebuild as **v2** or set this as the endpoint **Docker Command** (then scale workers to 0 and back so they restart):
+
+```bash
+/bin/bash -c 'mkdir -p /comfyui/models; for d in insightface facerestore_models; do if [ -d /runpod-volume/models/$d ]; then rm -rf /comfyui/models/$d; ln -sfn /runpod-volume/models/$d /comfyui/models/$d; fi; done; exec /start.sh'
+```
+
+Confirm the file is on the volume (cheap CPU pod, same volume mounted at `/workspace`):
+
+```bash
+ls -lh /workspace/models/insightface/inswapper_128.onnx
+```
 
 ## 5. App env
 

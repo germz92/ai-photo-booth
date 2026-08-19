@@ -1,13 +1,96 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/db";
+import { overlayCoordsFromStored } from "./overlay";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { boothPrisma?: PrismaClient };
 
 export const prisma =
-  globalForPrisma.prisma ??
+  globalForPrisma.boothPrisma ??
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.boothPrisma = prisma;
+}
+
+export function oidValue(value: unknown) {
+  if (typeof value === "string" && value) return value;
+  if (value && typeof value === "object" && "$oid" in value) {
+    return String((value as { $oid: string }).$oid || "");
+  }
+  return "";
+}
+
+export async function setDocumentFields(
+  collection: string,
+  id: string,
+  fields: Record<string, unknown>,
+) {
+  await prisma.$runCommandRaw({
+    update: collection,
+    updates: [
+      {
+        q: { _id: { $oid: id } },
+        u: { $set: fields },
+      },
+    ],
+  });
+}
+
+export async function getDocument<T extends Record<string, unknown>>(
+  collection: string,
+  id: string,
+) {
+  const result = (await prisma.$runCommandRaw({
+    find: collection,
+    filter: { _id: { $oid: id } },
+    limit: 1,
+  })) as { cursor?: { firstBatch?: T[] } };
+  return result.cursor?.firstBatch?.[0] ?? null;
+}
+
+export async function getEventBranding(id: string) {
+  const doc = await getDocument<{
+    allowUpload?: boolean;
+    wallTitle?: string;
+    wallLogoKey?: string;
+    showWallTitle?: boolean;
+    overlayEnabled?: boolean;
+    overlayLogoKey?: string;
+    overlayPlacement?: string;
+    overlayScale?: number;
+    overlayPadding?: number;
+    overlayX?: number;
+    overlayY?: number;
+    overlaySampleKey?: string;
+  }>("Event", id);
+  const overlayLogoKey = typeof doc?.overlayLogoKey === "string" ? doc.overlayLogoKey.trim() : "";
+  const wallLogoKey = typeof doc?.wallLogoKey === "string" ? doc.wallLogoKey.trim() : "";
+  const overlaySampleKey = typeof doc?.overlaySampleKey === "string" ? doc.overlaySampleKey.trim() : "";
+  const coords = overlayCoordsFromStored({
+    x: doc?.overlayX,
+    y: doc?.overlayY,
+    placement: doc?.overlayPlacement,
+    padding: doc?.overlayPadding,
+  });
+  return {
+    allowUpload: doc?.allowUpload !== false,
+    wallTitle: typeof doc?.wallTitle === "string" ? doc.wallTitle.trim() : "",
+    wallLogoKey,
+    showWallTitle: doc?.showWallTitle !== false,
+    overlayEnabled: doc?.overlayEnabled === true,
+    overlayLogoKey,
+    overlayPlacement: typeof doc?.overlayPlacement === "string" ? doc.overlayPlacement : "top-center",
+    overlayScale: typeof doc?.overlayScale === "number" ? doc.overlayScale : 0.18,
+    overlayPadding: typeof doc?.overlayPadding === "number" ? doc.overlayPadding : 0.045,
+    overlayX: coords.x,
+    overlayY: coords.y,
+    overlaySampleKey,
+    overlaySourceKey: overlayLogoKey || wallLogoKey,
+  };
+}
+
+export async function eventAllowsUpload(id: string) {
+  const branding = await getEventBranding(id);
+  return branding.allowUpload;
 }

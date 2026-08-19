@@ -1,3 +1,4 @@
+import { APP_EMAIL_FROM } from "./brand";
 import { prisma } from "./prisma";
 import { appUrl } from "./runpod";
 
@@ -9,7 +10,7 @@ function sleep(ms: number) {
 }
 
 function mockEmail() {
-  return process.env.MOCK_DELIVERY === "true" || !process.env.RESEND_API_KEY;
+  return process.env.MOCK_DELIVERY === "true" || !process.env.SENDGRID_API_KEY;
 }
 
 function mockSms() {
@@ -26,12 +27,12 @@ async function sendEmail(to: string, link: string) {
     return;
   }
 
-  const { Resend } = await import("resend");
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.EMAIL_FROM || "Photo Booth <booth@localhost>";
-  const result = await resend.emails.send({
-    from,
+  const sgMail = await import("@sendgrid/mail");
+  sgMail.default.setApiKey(process.env.SENDGRID_API_KEY as string);
+  const from = process.env.EMAIL_FROM || APP_EMAIL_FROM;
+  await sgMail.default.send({
     to,
+    from,
     subject: "Your portrait is ready",
     html: `
       <p>Your AI portrait is ready.</p>
@@ -39,7 +40,6 @@ async function sendEmail(to: string, link: string) {
       <p>This link expires in 48 hours.</p>
     `,
   });
-  if (result.error) throw new Error(result.error.message);
 }
 
 async function sendSms(to: string, link: string) {
@@ -92,51 +92,63 @@ export async function deliverJob(
 
   const link = resultLink(job.resultToken);
   const channels = options?.channels ?? ["email", "sms"];
+  const tasks: Array<Promise<void>> = [];
 
   if (channels.includes("email")) {
-    if (!job.email) {
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { emailStatus: "skipped" },
-      });
-    } else if (job.emailStatus !== "sent" || options?.force) {
-      const result = await attemptChannel(
-        () => sendEmail(job.email as string, link),
-        options?.force ? 0 : job.emailAttempts,
-      );
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          emailAttempts: result.attempts,
-          emailStatus: result.ok ? "sent" : "failed",
-          emailError: result.ok ? null : result.error,
-        },
-      });
-    }
+    tasks.push(
+      (async () => {
+        if (!job.email) {
+          await prisma.job.update({
+            where: { id: job.id },
+            data: { emailStatus: "skipped" },
+          });
+          return;
+        }
+        if (job.emailStatus === "sent" && !options?.force) return;
+        const result = await attemptChannel(
+          () => sendEmail(job.email as string, link),
+          options?.force ? 0 : job.emailAttempts,
+        );
+        await prisma.job.update({
+          where: { id: job.id },
+          data: {
+            emailAttempts: result.attempts,
+            emailStatus: result.ok ? "sent" : "failed",
+            emailError: result.ok ? null : result.error,
+          },
+        });
+      })(),
+    );
   }
 
   if (channels.includes("sms")) {
-    if (!job.phone) {
-      await prisma.job.update({
-        where: { id: job.id },
-        data: { smsStatus: "skipped" },
-      });
-    } else if (job.smsStatus !== "sent" || options?.force) {
-      const result = await attemptChannel(
-        () => sendSms(job.phone as string, link),
-        options?.force ? 0 : job.smsAttempts,
-      );
-      await prisma.job.update({
-        where: { id: job.id },
-        data: {
-          smsAttempts: result.attempts,
-          smsStatus: result.ok ? "sent" : "failed",
-          smsError: result.ok ? null : result.error,
-        },
-      });
-    }
+    tasks.push(
+      (async () => {
+        if (!job.phone) {
+          await prisma.job.update({
+            where: { id: job.id },
+            data: { smsStatus: "skipped" },
+          });
+          return;
+        }
+        if (job.smsStatus === "sent" && !options?.force) return;
+        const result = await attemptChannel(
+          () => sendSms(job.phone as string, link),
+          options?.force ? 0 : job.smsAttempts,
+        );
+        await prisma.job.update({
+          where: { id: job.id },
+          data: {
+            smsAttempts: result.attempts,
+            smsStatus: result.ok ? "sent" : "failed",
+            smsError: result.ok ? null : result.error,
+          },
+        });
+      })(),
+    );
   }
 
+  await Promise.all(tasks);
   return prisma.job.findUnique({ where: { id: job.id } });
 }
 

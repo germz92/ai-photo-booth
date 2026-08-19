@@ -51,7 +51,7 @@
   },
   "203": {
     "inputs": {
-      "text": "Refine the supplied portrait into a premium photorealistic commercial event portrait while preserving the existing composition, pose, natural body proportions, physical build, wardrobe, props, environmental effects, and overall scene design established in the supplied image. Keep the subject’s silhouette and framing consistent with the supplied image.\n\nImprove facial realism, natural skin texture, sharp eyes, realistic hair detail, accurate hands and anatomy, fabric detail, lighting realism, dimensional rim lighting, atmospheric depth, and clean subject separation. Maintain corporate-appropriate styling and preserve the established visual theme of the image.\n\nHigh-end commercial portrait photography, polished editorial finish, cinematic lighting, realistic detail, natural anatomy, premium event activation aesthetic. Do not redesign the scene or significantly alter the subject’s pose, body shape, clothing, props, theme elements, or framing.",
+      "text": "Refine the supplied portrait into a premium photorealistic commercial event portrait while preserving the existing composition, pose, natural body proportions, physical build, wardrobe, props, environmental effects, and overall scene design established in the supplied image. Keep the subject’s silhouette and framing consistent with the supplied image.\n\nImprove facial realism, natural skin texture, sharp eyes, realistic hair detail, accurate hands and anatomy, fabric detail, lighting realism, dimensional rim lighting, atmospheric depth, and clean subject separation. Preserve the established visual theme of the image.\n\nHigh-end commercial portrait photography, polished editorial finish, cinematic lighting, realistic detail, natural anatomy, premium event activation aesthetic. Do not redesign the scene or significantly alter the subject’s pose, body shape, clothing, props, theme elements, or framing.",
       "clip": ["123", 0]
     },
     "class_type": "CLIPTextEncode",
@@ -292,6 +292,16 @@
       "title": "VAE Encode"
     }
   },
+  "291": {
+    "inputs": {
+      "amount": 4,
+      "samples": ["288", 0]
+    },
+    "class_type": "RepeatLatentBatch",
+    "_meta": {
+      "title": "4 variations per request"
+    }
+  },
   "289": {
     "inputs": {
       "seed": 0,
@@ -303,7 +313,7 @@
       "model": ["282", 0],
       "positive": ["286", 0],
       "negative": ["287", 0],
-      "latent_image": ["288", 0]
+      "latent_image": ["291", 0]
     },
     "class_type": "KSampler",
     "_meta": {

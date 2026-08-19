@@ -1,5 +1,7 @@
-import { CaptureBooth } from "@/components/CaptureBooth";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 
-export default function Home() {
-  return <CaptureBooth />;
+export default async function Home() {
+  const session = await auth();
+  redirect(session?.user ? "/admin" : "/admin/login");
 }

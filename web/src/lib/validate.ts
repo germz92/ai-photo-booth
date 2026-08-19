@@ -5,34 +5,37 @@ export function normalizePhone(value?: string | null) {
   return value.replace(/[^\d+]/g, "");
 }
 
+export function parseJobContact(
+  email?: string | null,
+  phone?: string | null,
+  options?: { required?: boolean },
+) {
+  const nextEmail = (email || "").trim();
+  const nextPhone = normalizePhone(phone);
+  if (!nextEmail && !nextPhone) {
+    if (options?.required === false) return { email: null, phone: null };
+    return { error: "Provide an email or a mobile number" as const };
+  }
+  if (nextEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+    return { error: "Enter a valid email" as const };
+  }
+  return { email: nextEmail || null, phone: nextPhone || null };
+}
+
 export const createJobSchema = z
   .object({
     email: z.string().trim().optional(),
     phone: z.string().trim().optional(),
-    consent: z.boolean(),
+    eventId: z.string().trim().min(1, "Event is required"),
+    themeId: z.string().trim().min(1, "Theme is required"),
+    skipContact: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
-    if (!value.consent) {
+    const parsed = parseJobContact(value.email, value.phone, { required: !value.skipContact });
+    if ("error" in parsed) {
       ctx.addIssue({
         code: "custom",
-        message: "Consent is required",
-        path: ["consent"],
-      });
-    }
-
-    const email = value.email || "";
-    const phone = normalizePhone(value.phone);
-    if (!email && !phone) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Provide an email or a mobile number",
-        path: ["email"],
-      });
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Enter a valid email",
+        message: parsed.error,
         path: ["email"],
       });
     }

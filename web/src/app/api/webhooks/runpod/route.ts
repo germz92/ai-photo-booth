@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { deliverJob } from "@/lib/delivery";
 import { handleRunpodWebhook } from "@/lib/jobs";
 import type { RunpodWebhookPayload } from "@/lib/runpod";
 
@@ -16,6 +18,15 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as RunpodWebhookPayload;
   try {
     const result = await handleRunpodWebhook(payload);
+    if (result.status === "complete") {
+      after(async () => {
+        try {
+          await deliverJob(result.jobId);
+        } catch (error) {
+          console.error("Webhook delivery failed", error);
+        }
+      });
+    }
     return Response.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

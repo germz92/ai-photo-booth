@@ -11,7 +11,11 @@ export type BoothWorkflow = Record<string, WorkflowNode>;
 
 const GUEST_IMAGE = "guest.jpg";
 
+let cachedWorkflow: BoothWorkflow | null = null;
+
 export function loadBoothWorkflow(): BoothWorkflow {
+  if (cachedWorkflow) return structuredClone(cachedWorkflow);
+
   const candidates = [
     process.env.WORKFLOW_PATH,
     path.join(process.cwd(), "../workflows/booth-api.json"),
@@ -25,30 +29,54 @@ export function loadBoothWorkflow(): BoothWorkflow {
     );
   }
 
-  return JSON.parse(readFileSync(file, "utf8")) as BoothWorkflow;
+  cachedWorkflow = JSON.parse(readFileSync(file, "utf8")) as BoothWorkflow;
+  return structuredClone(cachedWorkflow);
 }
 
 export function randomSeed(): number {
   return Math.floor(Math.random() * 1_000_000_000_000);
 }
 
+export const MIN_BATCH = 1;
+export const MAX_BATCH = 4;
+export const DEFAULT_BATCH = 4;
+
+export function clampBatch(value: unknown, fallback = DEFAULT_BATCH): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(MAX_BATCH, Math.max(MIN_BATCH, Math.round(n)));
+}
+
+export function defaultQwenPrompt(): string {
+  const workflow = loadBoothWorkflow();
+  const prompt = workflow["284"]?.inputs?.prompt;
+  return typeof prompt === "string" ? prompt : "";
+}
+
 export function buildRunpodWorkflow(options?: {
   imageName?: string;
   kreaSeed?: number;
   qwenSeed?: number;
-}): { workflow: BoothWorkflow; kreaSeed: number; qwenSeed: number; imageName: string } {
+  qwenPrompt?: string;
+  batch?: number;
+}): { workflow: BoothWorkflow; kreaSeed: number; qwenSeed: number; imageName: string; batch: number } {
   const workflow = structuredClone(loadBoothWorkflow());
   const imageName = options?.imageName ?? GUEST_IMAGE;
   const kreaSeed = options?.kreaSeed ?? randomSeed();
   const qwenSeed = options?.qwenSeed ?? randomSeed();
+  const batch = clampBatch(options?.batch);
 
-  if (!workflow["120"] || !workflow["247"] || !workflow["289"]) {
-    throw new Error("booth-api.json is missing injectable nodes 120/247/289");
+  if (!workflow["120"] || !workflow["247"] || !workflow["289"] || !workflow["284"] || !workflow["291"]) {
+    throw new Error("booth-api.json is missing injectable nodes 120/247/284/289/291");
   }
 
   workflow["120"].inputs.image = imageName;
   workflow["247"].inputs.seed = kreaSeed;
   workflow["289"].inputs.seed = qwenSeed;
+  workflow["291"].inputs.amount = batch;
+  if (typeof options?.qwenPrompt === "string" && options.qwenPrompt.trim()) {
+    workflow["284"].inputs.prompt = options.qwenPrompt.trim();
+  }
 
-  return { workflow, kreaSeed, qwenSeed, imageName };
+  return { workflow, kreaSeed, qwenSeed, imageName, batch };
 }

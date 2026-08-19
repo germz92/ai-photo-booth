@@ -49,5 +49,6 @@ Get-Model "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolv
 Get-Model "https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx" (Join-Path $Root "insightface\inswapper_128.onnx")
 Get-Model "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1.4.pth" (Join-Path $Root "facerestore_models\GFPGANv1.4.pth")
 Get-Model "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip" (Join-Path $Root "insightface\buffalo_l.zip")
+Get-Model "https://github.com/deepinsight/insightface/releases/download/v0.7/antelopev2.zip" (Join-Path $Root "insightface\antelopev2.zip")
 
 Write-Host "Done. Volume layout is under $Root"

@@ -34,10 +34,11 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local booth data
-/data
+# generated prisma client
+/src/generated
 /dev.db
 /prisma/dev.db
+/data
 
 # vercel
 .vercel

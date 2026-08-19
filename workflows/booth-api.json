@@ -292,6 +292,16 @@
       "title": "VAE Encode"
     }
   },
+  "291": {
+    "inputs": {
+      "amount": 4,
+      "samples": ["288", 0]
+    },
+    "class_type": "RepeatLatentBatch",
+    "_meta": {
+      "title": "4 variations per request"
+    }
+  },
   "289": {
     "inputs": {
       "seed": 0,
@@ -303,7 +313,7 @@
       "model": ["282", 0],
       "positive": ["286", 0],
       "negative": ["287", 0],
-      "latent_image": ["288", 0]
+      "latent_image": ["291", 0]
     },
     "class_type": "KSampler",
     "_meta": {

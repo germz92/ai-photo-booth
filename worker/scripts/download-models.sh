@@ -79,10 +79,30 @@ download "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/GFPGANv1
   "$ROOT/facerestore_models/GFPGANv1.4.pth"
 download "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip" \
   "$ROOT/insightface/buffalo_l.zip"
+download "https://github.com/deepinsight/insightface/releases/download/v0.7/antelopev2.zip" \
+  "$ROOT/insightface/antelopev2.zip"
 
-if command -v unzip >/dev/null 2>&1 && [[ -f "$ROOT/insightface/buffalo_l.zip" ]]; then
-  mkdir -p "$ROOT/insightface/models/buffalo_l"
-  unzip -n "$ROOT/insightface/buffalo_l.zip" -d "$ROOT/insightface/models/buffalo_l"
+flatten_insightface_pack() {
+  local name="$1"
+  local pack="$ROOT/insightface/models/$name"
+  if [[ -d "$pack/$name" ]]; then
+    mv "$pack/$name/"* "$pack/" 2>/dev/null || true
+    rmdir "$pack/$name" 2>/dev/null || true
+  fi
+}
+
+if command -v unzip >/dev/null 2>&1; then
+  if [[ -f "$ROOT/insightface/buffalo_l.zip" ]]; then
+    mkdir -p "$ROOT/insightface/models/buffalo_l"
+    unzip -n "$ROOT/insightface/buffalo_l.zip" -d "$ROOT/insightface/models/buffalo_l"
+    flatten_insightface_pack buffalo_l
+  fi
+  # Zip root is antelopev2/*.onnx — extract into models/, not models/antelopev2/
+  if [[ -f "$ROOT/insightface/antelopev2.zip" ]]; then
+    mkdir -p "$ROOT/insightface/models"
+    unzip -n "$ROOT/insightface/antelopev2.zip" -d "$ROOT/insightface/models"
+    flatten_insightface_pack antelopev2
+  fi
 fi
 
 echo
