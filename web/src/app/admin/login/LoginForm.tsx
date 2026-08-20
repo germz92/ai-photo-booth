@@ -31,7 +31,7 @@ export function LoginForm() {
       setBusy(false);
       return;
     }
-    window.location.href = result?.url || callbackUrl;
+    window.location.assign(callbackUrl);
   }
 
   return (

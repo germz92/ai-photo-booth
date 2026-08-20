@@ -14,6 +14,7 @@ Required env:
 ```text
 DATABASE_URL=mongodb+srv://USER:PASS@CLUSTER/booth
 APP_URL=https://YOUR-SERVICE.onrender.com
+AUTH_URL=https://YOUR-SERVICE.onrender.com
 WEBHOOK_SECRET=
 AUTH_SECRET=
 ADMIN_BOOTSTRAP_EMAIL=
@@ -37,7 +38,7 @@ TWILIO_AUTH_TOKEN=
 TWILIO_FROM_NUMBER=
 ```
 
-`APP_URL` must be the public HTTPS origin. RunPod POSTs `/api/webhooks/runpod?secret=WEBHOOK_SECRET`.
+`APP_URL` and `AUTH_URL` must be the public HTTPS origin (not localhost). RunPod POSTs `/api/webhooks/runpod?secret=WEBHOOK_SECRET`.
 
 Keep the S3 bucket private. Guests load images through `/r/[token]` and `/api/r/[token]/image`. CORS on the bucket is not required.
 

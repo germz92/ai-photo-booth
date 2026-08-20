@@ -1,4 +1,5 @@
 import { buildRunpodWorkflow, type BoothWorkflow } from "./workflow";
+import { publicAppUrl } from "./public-url";
 
 export type RunpodSubmitResult = { id: string; mocked: boolean };
 
@@ -19,7 +20,9 @@ export type RunpodWebhookPayload = {
 };
 
 export function appUrl() {
-  return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+  const url = publicAppUrl();
+  if (url) return url;
+  return process.env.NODE_ENV === "production" ? "" : "http://localhost:3000";
 }
 
 export function webhookUrl() {

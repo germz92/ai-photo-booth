@@ -3,7 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ensureBootstrapAdmin } from "@/lib/auth-bootstrap";
+import { applyProductionAuthUrl, isLocalHostUrl } from "@/lib/public-url";
 import { loadUserAccount, markLogin } from "@/lib/users";
+
+applyProductionAuthUrl();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -52,6 +55,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role === "superadmin" ? "superadmin" : "user";
       }
       return session;
+    },
+    redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        const next = new URL(url);
+        const base = new URL(baseUrl);
+        if (next.origin === base.origin) return url;
+        if (isLocalHostUrl(url)) {
+          return `${base.origin}${next.pathname}${next.search}`;
+        }
+      } catch {
+        return baseUrl;
+      }
+      return baseUrl;
     },
   },
 });
