@@ -91,7 +91,7 @@ export function EventWall({
   const [logo, setLogo] = useState(hasLogo);
   const [version, setVersion] = useState(logoVersion);
   const [error, setError] = useState("");
-  const seen = useRef(new Set<string>());
+  const seen = useRef(new Map<string, string>());
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState<Set<string>>(new Set());
   const gridRef = useRef<HTMLElement>(null);
@@ -134,13 +134,24 @@ export function EventWall({
       }
       const next = json.portraits || [];
       const newcomers = new Set<string>();
+      const staleReady: string[] = [];
+      const firstLoad = seen.current.size === 0;
       for (const portrait of next) {
-        if (seen.current.size > 0 && !seen.current.has(portrait.id)) {
+        const previousSrc = seen.current.get(portrait.id);
+        if (!firstLoad && previousSrc !== portrait.src) {
           newcomers.add(portrait.id);
+          if (previousSrc) staleReady.push(portrait.id);
         }
-        seen.current.add(portrait.id);
+        seen.current.set(portrait.id, portrait.src);
       }
       setPortraits(next);
+      if (staleReady.length) {
+        setReady((current) => {
+          const updated = new Set(current);
+          for (const id of staleReady) updated.delete(id);
+          return updated;
+        });
+      }
       const visibleTitle = json.event?.showWallTitle !== false;
       setShowTitle(visibleTitle);
       setTitle(visibleTitle ? (json.event?.wallTitle || "").trim() || json.event?.name || eventName : "");
@@ -316,7 +327,7 @@ export function EventWall({
             const isNew = fresh.has(portrait.id) && loaded;
             return (
               <figure
-                key={portrait.id}
+                key={portrait.src}
                 className={`wall-tile${loaded ? " is-ready" : ""}${isNew ? " wall-tile-new" : ""}`}
                 style={
                   isNew

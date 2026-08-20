@@ -28,10 +28,11 @@ export async function GET(
   const body = thumb
     ? await readThumb(key, outputThumbKey(jobId, Number.isFinite(index) ? index : 0))
     : await getObject(key);
+  const versioned = url.searchParams.has("v");
   return new Response(new Uint8Array(body), {
     headers: {
       "Content-Type": thumb ? "image/jpeg" : contentTypeForKey(key),
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": versioned ? "public, max-age=86400, immutable" : "no-store",
     },
   });
 }

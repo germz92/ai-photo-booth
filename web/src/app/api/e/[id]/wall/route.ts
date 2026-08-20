@@ -24,6 +24,7 @@ export async function GET(
     select: {
       id: true,
       createdAt: true,
+      updatedAt: true,
       outputKey: true,
       outputKeys: true,
       theme: { select: { title: true } },
@@ -36,7 +37,8 @@ export async function GET(
         id: `${job.id}-${index}`,
         themeTitle: job.theme.title,
         createdAt: job.createdAt.toISOString(),
-        src: `/api/e/${id}/wall/${job.id}?i=${index}&size=thumb`,
+        updatedAt: job.updatedAt.toISOString(),
+        src: `/api/e/${id}/wall/${job.id}?i=${index}&size=thumb&v=${job.updatedAt.getTime()}`,
       })),
     )
     .slice(0, WALL_LIMIT);

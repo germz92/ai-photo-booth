@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { captureLightbox, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
+import { useEffect, useRef, useState } from "react";
+import { OptimizePromptButton } from "@/components/OptimizePromptButton";
 import { QrCodeImage } from "@/components/QrCodeImage";
+import { LOOK_OPTIONS, resolveThemePrompt, type LookId } from "@/lib/theme-looks";
+import { captureLightbox, jobMediaSrc, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
+
+export type JobThemeOption = {
+  id: string;
+  title: string;
+  prompt: string;
+  active: boolean;
+  splitLooks: boolean;
+  masculinePrompt: string;
+  femininePrompt: string;
+};
 
 export type JobDetail = {
   id: string;
@@ -19,10 +31,24 @@ export type JobDetail = {
   smsError: string | null;
   error: string | null;
   createdAt: string;
+  updatedAt: string;
   hasOriginal: boolean;
   outputCount: number;
   resultUrl: string;
+  themes?: JobThemeOption[];
 };
+
+function isProcessing(status: string) {
+  return status === "submitted" || status === "processing" || status === "queued";
+}
+
+function inferLook(theme: JobThemeOption | undefined, prompt: string): LookId | "" {
+  if (!theme?.splitLooks) return "";
+  const value = prompt.trim();
+  if (value && value === theme.masculinePrompt.trim()) return "masculine";
+  if (value && value === theme.femininePrompt.trim()) return "feminine";
+  return "";
+}
 
 export function SubmissionDetail({
   jobId,
@@ -34,14 +60,21 @@ export function SubmissionDetail({
   onChanged: () => void;
 }) {
   const [job, setJob] = useState<JobDetail | null>(null);
+  const [themes, setThemes] = useState<JobThemeOption[]>([]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
   const [batch, setBatch] = useState(1);
+  const [themeId, setThemeId] = useState("");
+  const [look, setLook] = useState<LookId | "">("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
   const [copied, setCopied] = useState(false);
+  const pollRef = useRef(0);
+
+  const selectedTheme = themes.find((theme) => theme.id === themeId);
+  const needsLook = Boolean(selectedTheme?.splitLooks && !look && themeId !== job?.themeId);
 
   async function parseJson(response: Response) {
     const text = await response.text();
@@ -53,23 +86,58 @@ export function SubmissionDetail({
     }
   }
 
-  async function load() {
-    const response = await fetch(`/api/admin/jobs/${jobId}`);
+  function applyJob(next: JobDetail, options?: { form?: boolean }) {
+    setJob(next);
+    if (next.themes) setThemes(next.themes);
+    if (options?.form === false) return;
+    setEmail(next.email || "");
+    setPhone(next.phone || "");
+    setPrompt(next.prompt || "");
+    setBatch(next.batch || 1);
+    setThemeId(next.themeId);
+    const theme = (next.themes || themes).find((item) => item.id === next.themeId);
+    setLook(inferLook(theme, next.prompt || ""));
+  }
+
+  async function load(options?: { form?: boolean }) {
+    const response = await fetch(`/api/admin/jobs/${jobId}`, { cache: "no-store" });
     const json = await parseJson(response);
     if (!response.ok || !json.job) {
       setError(json.error || "Could not load submission");
-      return;
+      return json.job;
     }
-    setJob(json.job);
-    setEmail(json.job.email || "");
-    setPhone(json.job.phone || "");
-    setPrompt(json.job.prompt || "");
-    setBatch(json.job.batch || 1);
+    applyJob(json.job, options);
+    return json.job;
+  }
+
+  function stopPoll() {
+    window.clearInterval(pollRef.current);
+    pollRef.current = 0;
+  }
+
+  function startPoll() {
+    stopPoll();
+    pollRef.current = window.setInterval(() => {
+      void load({ form: false }).then((next) => {
+        if (!next) return;
+        if (!isProcessing(next.status)) {
+          stopPoll();
+          applyJob(next);
+          onChanged();
+        }
+      });
+    }, 2500);
   }
 
   useEffect(() => {
     void load();
+    return () => stopPoll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
+
+  function contactPayload() {
+    return { email, phone, prompt, batch, themeId };
+  }
 
   async function saveContact() {
     setBusy("save");
@@ -77,16 +145,17 @@ export function SubmissionDetail({
     const response = await fetch(`/api/admin/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, phone, prompt, batch }),
+      body: JSON.stringify(contactPayload()),
     });
     const json = await parseJson(response);
     setBusy("");
     if (!response.ok) {
       setError(json.error || "Could not save");
-      return;
+      return false;
     }
     await load();
     onChanged();
+    return true;
   }
 
   async function resend() {
@@ -95,7 +164,7 @@ export function SubmissionDetail({
     const saveResponse = await fetch(`/api/admin/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, phone, prompt, batch }),
+      body: JSON.stringify(contactPayload()),
     });
     if (!saveResponse.ok) {
       const json = await parseJson(saveResponse);
@@ -118,12 +187,16 @@ export function SubmissionDetail({
   }
 
   async function regenerate() {
+    if (needsLook) {
+      setError("Please choose a look");
+      return;
+    }
     setBusy("regen");
     setError("");
     const saveResponse = await fetch(`/api/admin/jobs/${jobId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, phone, prompt, batch }),
+      body: JSON.stringify(contactPayload()),
     });
     if (!saveResponse.ok) {
       const json = await parseJson(saveResponse);
@@ -134,7 +207,7 @@ export function SubmissionDetail({
     const response = await fetch(`/api/admin/jobs/${jobId}/regenerate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, batch }),
+      body: JSON.stringify({ prompt, batch, themeId, look: look || undefined }),
     });
     const json = await parseJson(response);
     setBusy("");
@@ -144,6 +217,28 @@ export function SubmissionDetail({
     }
     await load();
     onChanged();
+    startPoll();
+  }
+
+  function selectTheme(nextId: string) {
+    setThemeId(nextId);
+    setError("");
+    const theme = themes.find((item) => item.id === nextId);
+    if (!theme) return;
+    if (theme.splitLooks) {
+      setLook("");
+      return;
+    }
+    setLook("");
+    setPrompt(theme.prompt);
+  }
+
+  function selectLook(next: LookId) {
+    setLook(next);
+    setError("");
+    if (selectedTheme) {
+      setPrompt(resolveThemePrompt(selectedTheme, selectedTheme.prompt, next));
+    }
   }
 
   return (
@@ -158,7 +253,7 @@ export function SubmissionDetail({
           <div>
             <p className="text-xs tracking-[0.28em] uppercase text-accent">Submission</p>
             <h2 className="mt-2 text-2xl font-light tracking-[0.08em] uppercase">
-              {job?.themeTitle || "Details"}
+              {selectedTheme?.title || job?.themeTitle || "Details"}
             </h2>
             {job ? (
               <p className="mt-1 text-xs text-muted">{new Date(job.createdAt).toLocaleString()}</p>
@@ -178,13 +273,18 @@ export function SubmissionDetail({
                 <div className={`submission-hero ${job.outputCount === 1 ? "single" : "multi"}`}>
                   {Array.from({ length: job.outputCount }, (_, index) => (
                     <button
-                      key={index}
+                      key={`${job.updatedAt}-${index}`}
                       type="button"
-                      onClick={() => setLightbox(outputLightbox(job.id, job.outputCount, index))}
+                      onClick={() => setLightbox(outputLightbox(job.id, job.outputCount, index, job.updatedAt))}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={`/api/admin/jobs/${job.id}/media?which=output&i=${index}&size=thumb`}
+                        src={jobMediaSrc(job.id, {
+                          which: "output",
+                          i: index,
+                          size: "thumb",
+                          v: job.updatedAt,
+                        })}
                         alt={`Portrait ${index + 1}`}
                       />
                     </button>
@@ -199,11 +299,11 @@ export function SubmissionDetail({
                     type="button"
                     className="shrink-0"
                     title="Original capture"
-                    onClick={() => setLightbox(captureLightbox(job.id))}
+                    onClick={() => setLightbox(captureLightbox(job.id, job.updatedAt))}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/admin/jobs/${job.id}/media?which=original&size=thumb`}
+                      src={jobMediaSrc(job.id, { which: "original", size: "thumb", v: job.updatedAt })}
                       alt="Original capture"
                       className="submission-thumb"
                     />
@@ -216,6 +316,9 @@ export function SubmissionDetail({
                   <span className={`submission-status ${job.status === "complete" ? "complete" : job.status === "failed" ? "failed" : "processing"}`}>
                     {job.status}
                   </span>
+                  {isProcessing(job.status) ? (
+                    <p className="mt-2 text-xs text-accent">Generating new portraits…</p>
+                  ) : null}
                   {job.error ? <p className="mt-2 text-sm text-[var(--danger)]">{job.error}</p> : null}
                 </div>
               </div>
@@ -267,8 +370,51 @@ export function SubmissionDetail({
                   </div>
                 </div>
               ) : null}
+              {themes.length > 0 ? (
+                <div className="grid gap-2">
+                  <span className="booth-label">Theme</span>
+                  <div className="flex flex-wrap gap-2">
+                    {themes.map((theme) => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        className={`kiosk-theme-btn ${themeId === theme.id ? "selected" : ""}`}
+                        onClick={() => selectTheme(theme.id)}
+                      >
+                        {theme.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {selectedTheme?.splitLooks ? (
+                <div className="grid gap-2">
+                  <span className="booth-label">Look</span>
+                  <div className="flex flex-wrap gap-2">
+                    {LOOK_OPTIONS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`kiosk-theme-btn ${look === option.id ? "selected" : ""}`}
+                        onClick={() => selectLook(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <label className="grid gap-2">
-                <span className="booth-label">Prompt</span>
+                <span className="flex items-center justify-between gap-3">
+                  <span className="booth-label mb-0">Prompt</span>
+                  <OptimizePromptButton
+                    value={prompt}
+                    onChange={setPrompt}
+                    look={look || undefined}
+                    hint={selectedTheme?.title}
+                    disabled={Boolean(busy)}
+                  />
+                </span>
                 <textarea
                   className="booth-input min-h-32 py-3"
                   value={prompt}
@@ -313,7 +459,7 @@ export function SubmissionDetail({
                 <button
                   type="button"
                   className="booth-button min-h-10 px-4 text-xs"
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || needsLook}
                   onClick={() => void regenerate()}
                 >
                   {busy === "regen" ? "Starting…" : "Regenerate portraits"}

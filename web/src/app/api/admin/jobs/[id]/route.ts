@@ -2,6 +2,7 @@ import { requireOwnedJob } from "@/lib/access";
 import { jobOutputKeys } from "@/lib/jobs";
 import { resultLink } from "@/lib/delivery";
 import { prisma } from "@/lib/prisma";
+import { attachThemeLooks } from "@/lib/theme-looks-db";
 import { parseJobContact } from "@/lib/validate";
 import { clampBatch } from "@/lib/workflow";
 
@@ -22,6 +23,23 @@ export async function GET(
   const prompt =
     (typeof (job as { prompt?: string }).prompt === "string" && (job as { prompt?: string }).prompt) ||
     job.theme.prompt;
+  const themeRows = await prisma.theme.findMany({
+    where: {
+      eventId: job.eventId,
+      OR: [{ active: true }, { id: job.themeId }],
+    },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, title: true, prompt: true, active: true },
+  });
+  const themes = (await attachThemeLooks(themeRows)).map((theme) => ({
+    id: theme.id,
+    title: theme.title,
+    prompt: theme.prompt,
+    active: theme.active,
+    splitLooks: theme.splitLooks,
+    masculinePrompt: theme.masculinePrompt,
+    femininePrompt: theme.femininePrompt,
+  }));
   return Response.json({
     job: {
       id: job.id,
@@ -30,6 +48,7 @@ export async function GET(
       phone: job.phone,
       prompt,
       batch: Number((job as { batch?: number }).batch) || 1,
+      eventId: job.eventId,
       themeId: job.themeId,
       themeTitle: job.theme.title,
       emailStatus: job.emailStatus,
@@ -38,10 +57,12 @@ export async function GET(
       smsError: job.smsError,
       error: job.error,
       createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString(),
       hasOriginal: Boolean(job.originalKey),
       outputCount: jobOutputKeys(job).length,
       resultUrl: resultLink(job.resultToken),
       resultExpiresAt: job.resultExpiresAt.toISOString(),
+      themes,
     },
   });
 }
@@ -61,6 +82,7 @@ export async function PATCH(
     phone?: string;
     prompt?: string;
     batch?: number;
+    themeId?: string;
   };
 
   const contact = parseJobContact(
@@ -81,6 +103,16 @@ export async function PATCH(
       ? clampBatch(body.batch, Number((job as { batch?: number }).batch) || 1)
       : Number((job as { batch?: number }).batch) || 1;
 
+  let themeId = job.themeId;
+  if (body.themeId && body.themeId !== job.themeId) {
+    const theme = await prisma.theme.findFirst({
+      where: { id: body.themeId, eventId: job.eventId },
+      select: { id: true },
+    });
+    if (!theme) return Response.json({ error: "Theme is not available" }, { status: 400 });
+    themeId = theme.id;
+  }
+
   try {
     const updated = await prisma.job.update({
       where: { id },
@@ -89,6 +121,7 @@ export async function PATCH(
         phone: contact.phone,
         prompt,
         batch,
+        themeId,
         emailStatus: contact.email ? (contact.email === job.email ? job.emailStatus : "pending") : "skipped",
         smsStatus: contact.phone ? (contact.phone === job.phone ? job.smsStatus : "pending") : "skipped",
         emailError: contact.email === job.email ? job.emailError : null,
@@ -102,6 +135,7 @@ export async function PATCH(
         phone: updated.phone,
         prompt: (updated as { prompt?: string }).prompt ?? prompt,
         batch: Number((updated as { batch?: number }).batch) || batch,
+        themeId: updated.themeId,
         emailStatus: updated.emailStatus,
         smsStatus: updated.smsStatus,
       },

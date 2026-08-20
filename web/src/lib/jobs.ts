@@ -13,6 +13,8 @@ import {
   type RunpodWebhookPayload,
 } from "./runpod";
 import { getObject, putObject } from "./storage";
+import { loadThemeLooks } from "./theme-looks-db";
+import { isLookId, resolveThemePrompt } from "./theme-looks";
 import { outputThumbKey, saveThumb } from "./thumbs";
 import { clampBatch } from "./workflow";
 
@@ -100,7 +102,7 @@ export async function completeMockJob(jobId: string) {
 
 export async function regenerateJob(
   jobId: string,
-  options?: { prompt?: string; batch?: number },
+  options?: { prompt?: string; batch?: number; themeId?: string; look?: string },
 ) {
   const job = await prisma.job.findUnique({
     where: { id: jobId },
@@ -108,14 +110,32 @@ export async function regenerateJob(
   });
   if (!job) throw new Error("Not found");
 
-  const prompt = (options?.prompt ?? job.prompt ?? job.theme.prompt).trim();
-  if (!prompt) throw new Error("Prompt is required");
+  let themeId = job.themeId;
+  let themePrompt = job.theme.prompt;
+  if (options?.themeId && options.themeId !== job.themeId) {
+    const theme = await prisma.theme.findFirst({
+      where: { id: options.themeId, eventId: job.eventId },
+      select: { id: true, prompt: true },
+    });
+    if (!theme) throw new Error("Theme is not available");
+    themeId = theme.id;
+    themePrompt = theme.prompt;
+  }
+
+  const looks = await loadThemeLooks(themeId, themePrompt);
+  const look = isLookId(options?.look) ? options.look : undefined;
+  const customPrompt = options?.prompt?.trim() || "";
+  const prompt = customPrompt || resolveThemePrompt(looks, themePrompt, look) || (job.prompt || "").trim();
+  if (!prompt) {
+    throw new Error(looks.splitLooks && !look ? "Please choose a look" : "Prompt is required");
+  }
   const batch = clampBatch(options?.batch ?? job.batch ?? job.event.batch, 1);
   const original = await getObject(job.originalKey);
 
   await prisma.job.update({
     where: { id: jobId },
     data: {
+      themeId,
       prompt,
       batch,
       status: "submitted",

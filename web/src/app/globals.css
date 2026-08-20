@@ -584,6 +584,27 @@ select.booth-input {
   background: rgba(0, 0, 0, 0.35);
 }
 
+.submission-media > .generating-label {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.submission-media.is-generating .submission-hero img,
+.submission-media.is-generating .submission-hero-placeholder img {
+  opacity: 0.55;
+}
+
 .submission-capture-pip {
   position: absolute;
   left: 8px;
@@ -595,7 +616,7 @@ select.booth-input {
   border-radius: 4px;
   border: 2px solid #0a0a0a;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
-  z-index: 1;
+  z-index: 2;
 }
 
 .submission-capture-pip img {

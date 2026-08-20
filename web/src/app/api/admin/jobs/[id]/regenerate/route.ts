@@ -15,6 +15,8 @@ export async function POST(
   const body = (await request.json().catch(() => ({}))) as {
     prompt?: string;
     batch?: number;
+    themeId?: string;
+    look?: string;
   };
 
   try {
@@ -22,6 +24,8 @@ export async function POST(
       regenerateJob(id, {
         prompt: body.prompt,
         batch: body.batch,
+        themeId: body.themeId,
+        look: body.look,
       }),
     );
     after(async () => {

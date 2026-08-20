@@ -9,7 +9,8 @@ export async function GET(
   context: { params: Promise<{ token: string }> },
 ) {
   const { token } = await context.params;
-  const index = Number(new URL(request.url).searchParams.get("i") || "0");
+  const url = new URL(request.url);
+  const index = Number(url.searchParams.get("i") || "0");
   const job = await prisma.job.findUnique({ where: { resultToken: token } });
   const keys = job ? jobOutputKeys(job) : [];
   const key = keys[Number.isFinite(index) ? index : 0];
@@ -24,7 +25,7 @@ export async function GET(
   return new Response(new Uint8Array(body), {
     headers: {
       "Content-Type": contentTypeForKey(key),
-      "Cache-Control": "private, max-age=3600",
+      "Cache-Control": url.searchParams.has("v") ? "private, max-age=3600, immutable" : "no-store",
       "Content-Disposition": `inline; filename="portrait-${index + 1}${key.slice(key.lastIndexOf("."))}"`,
     },
   });

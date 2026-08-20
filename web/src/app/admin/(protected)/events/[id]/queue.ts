@@ -7,12 +7,25 @@ export type QueueJob = {
   smsStatus: string;
   error: string | null;
   createdAt: string;
+  updatedAt: string;
   themeId: string;
   prompt: string;
   hasOriginal: boolean;
   outputCount: number;
   resultToken: string;
 };
+
+function isoDate(value: Date | string | undefined) {
+  if (!value) return new Date().toISOString();
+  return typeof value === "string" ? value : value.toISOString();
+}
+
+export function mediaVersion(value: Date | string | number | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (!value) return "";
+  const time = typeof value === "string" ? Date.parse(value) : value.getTime();
+  return Number.isFinite(time) ? String(time) : "";
+}
 
 export function toQueueJob(job: {
   id: string;
@@ -23,6 +36,7 @@ export function toQueueJob(job: {
   smsStatus: string;
   error: string | null;
   createdAt: Date | string;
+  updatedAt?: Date | string | null;
   themeId: string;
   prompt?: string | null;
   originalKey?: string | null;
@@ -32,6 +46,7 @@ export function toQueueJob(job: {
   outputCount?: number;
   resultToken?: string | null;
 }): QueueJob {
+  const createdAt = isoDate(job.createdAt);
   return {
     id: job.id,
     status: job.status,
@@ -40,7 +55,8 @@ export function toQueueJob(job: {
     emailStatus: job.emailStatus,
     smsStatus: job.smsStatus,
     error: job.error,
-    createdAt: typeof job.createdAt === "string" ? job.createdAt : job.createdAt.toISOString(),
+    createdAt,
+    updatedAt: isoDate(job.updatedAt || job.createdAt),
     themeId: job.themeId,
     prompt: job.prompt || "",
     hasOriginal: Boolean(job.originalKey ?? job.hasOriginal),

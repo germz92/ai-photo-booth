@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { mediaVersion } from "./queue";
 
 export type LightboxItem = {
   src: string;
@@ -13,23 +14,46 @@ export type LightboxState = {
   index: number;
 };
 
-export function outputLightbox(jobId: string, outputCount: number, index: number): LightboxState {
+export function jobMediaSrc(
+  jobId: string,
+  options: {
+    which?: "output" | "original";
+    i?: number;
+    size?: "thumb";
+    v?: string | number | Date;
+  } = {},
+) {
+  const params = new URLSearchParams();
+  params.set("which", options.which || "output");
+  if ((options.which || "output") === "output") params.set("i", String(options.i ?? 0));
+  if (options.size) params.set("size", options.size);
+  const version = mediaVersion(options.v);
+  if (version) params.set("v", version);
+  return `/api/admin/jobs/${jobId}/media?${params}`;
+}
+
+export function outputLightbox(
+  jobId: string,
+  outputCount: number,
+  index: number,
+  v?: string | number | Date,
+): LightboxState {
   return {
     index,
     items: Array.from({ length: Math.max(1, outputCount) }, (_, itemIndex) => ({
-      src: `/api/admin/jobs/${jobId}/media?which=output&i=${itemIndex}`,
+      src: jobMediaSrc(jobId, { which: "output", i: itemIndex, v }),
       filename: `portrait-${jobId}-${itemIndex + 1}.jpg`,
       label: `Portrait ${itemIndex + 1}`,
     })),
   };
 }
 
-export function captureLightbox(jobId: string): LightboxState {
+export function captureLightbox(jobId: string, v?: string | number | Date): LightboxState {
   return {
     index: 0,
     items: [
       {
-        src: `/api/admin/jobs/${jobId}/media?which=original`,
+        src: jobMediaSrc(jobId, { which: "original", v }),
         filename: `capture-${jobId}.jpg`,
         label: "Capture",
       },

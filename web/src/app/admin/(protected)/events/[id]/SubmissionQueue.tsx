@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { captureLightbox, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
+import { captureLightbox, jobMediaSrc, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
 import { SubmissionDetail } from "./SubmissionDetail";
-import type { QueueJob } from "./queue";
+import { mediaVersion, type QueueJob } from "./queue";
 import type { JobCounts, JobListFilter } from "@/lib/event-jobs";
 
 function isProcessing(status: string) {
@@ -52,7 +52,7 @@ export function SubmissionQueue({
     if (query) params.set("q", query);
     if (options.cursor) params.set("cursor", options.cursor);
     if (options.limit) params.set("limit", String(options.limit));
-    const response = await fetch(`/api/admin/events/${eventId}/jobs?${params}`);
+    const response = await fetch(`/api/admin/events/${eventId}/jobs?${params}`, { cache: "no-store" });
     return (await response.json()) as {
       jobs?: QueueJob[];
       nextCursor?: string | null;
@@ -177,18 +177,25 @@ export function SubmissionQueue({
         <div className="submissions-grid">
           {jobs.map((job) => (
             <article key={job.id} className="submission-card">
-              <div className="submission-media">
+              <div className={`submission-media${isProcessing(job.status) ? " is-generating" : ""}`}>
                 {job.outputCount > 0 ? (
                   <div className={`submission-hero ${job.outputCount === 1 ? "single" : "multi"}`}>
                     {Array.from({ length: job.outputCount }, (_, index) => (
                       <button
-                        key={index}
+                        key={`${mediaVersion(job.updatedAt)}-${index}`}
                         type="button"
-                        onClick={() => setLightbox(outputLightbox(job.id, job.outputCount, index))}
+                        onClick={() =>
+                          setLightbox(outputLightbox(job.id, job.outputCount, index, job.updatedAt))
+                        }
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={`/api/admin/jobs/${job.id}/media?which=output&i=${index}&size=thumb`}
+                          src={jobMediaSrc(job.id, {
+                            which: "output",
+                            i: index,
+                            size: "thumb",
+                            v: job.updatedAt,
+                          })}
                           alt={`Portrait ${index + 1}`}
                         />
                       </button>
@@ -198,38 +205,33 @@ export function SubmissionQueue({
                   <button
                     type="button"
                     className="submission-hero-placeholder"
-                    onClick={() => setLightbox(captureLightbox(job.id))}
+                    onClick={() => setLightbox(captureLightbox(job.id, job.updatedAt))}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/admin/jobs/${job.id}/media?which=original&size=thumb`}
+                      src={jobMediaSrc(job.id, { which: "original", size: "thumb", v: job.updatedAt })}
                       alt="Capture"
                     />
-                    {isProcessing(job.status) ? (
-                      <span className="generating-label">
-                        <span className="pulse-dot" />
-                        Generating
-                      </span>
-                    ) : null}
                   </button>
                 ) : (
-                  <div className="submission-hero-placeholder">
-                    <span className="generating-label">
-                      <span className="pulse-dot" />
-                      Generating
-                    </span>
-                  </div>
+                  <div className="submission-hero-placeholder" />
                 )}
+                {isProcessing(job.status) ? (
+                  <span className="generating-label">
+                    <span className="pulse-dot" />
+                    Generating
+                  </span>
+                ) : null}
                 {job.hasOriginal && job.outputCount > 0 ? (
                   <button
                     type="button"
                     className="submission-capture-pip"
                     title="Original capture"
-                    onClick={() => setLightbox(captureLightbox(job.id))}
+                    onClick={() => setLightbox(captureLightbox(job.id, job.updatedAt))}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`/api/admin/jobs/${job.id}/media?which=original&size=thumb`}
+                      src={jobMediaSrc(job.id, { which: "original", size: "thumb", v: job.updatedAt })}
                       alt="Original capture"
                     />
                   </button>

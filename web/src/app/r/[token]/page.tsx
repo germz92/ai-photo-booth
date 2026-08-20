@@ -46,7 +46,7 @@ export default async function ResultPage({
       <p className="mt-2 text-muted">Save your image{keys.length > 1 ? "s" : ""}. The link expires in 48 hours.</p>
       <div className={`mt-8 grid gap-4 ${keys.length > 1 ? "sm:grid-cols-2" : ""}`}>
         {keys.map((_, index) => {
-          const src = `/api/r/${token}/image?i=${index}`;
+          const src = `/api/r/${token}/image?i=${index}&v=${job.updatedAt.getTime()}`;
           return (
             <div key={src} className="overflow-hidden rounded border border-white/10 bg-black">
               {/* eslint-disable-next-line @next/next/no-img-element */}

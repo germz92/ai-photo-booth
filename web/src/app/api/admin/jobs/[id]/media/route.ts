@@ -32,10 +32,15 @@ export async function GET(
   const body = thumb
     ? await readThumb(key, which === "original" ? originalThumbKey(id) : outputThumbKey(id, Number.isFinite(index) ? index : 0))
     : await getObject(key);
+  const versioned = url.searchParams.has("v");
   return new Response(new Uint8Array(body), {
     headers: {
       "Content-Type": thumb ? "image/jpeg" : contentTypeForKey(key),
-      "Cache-Control": thumb ? "private, max-age=86400" : "private, max-age=120",
+      "Cache-Control": versioned
+        ? thumb
+          ? "private, max-age=86400, immutable"
+          : "private, max-age=120"
+        : "no-store",
       ...(download
         ? { "Content-Disposition": `attachment; filename="${filename}"` }
         : {}),

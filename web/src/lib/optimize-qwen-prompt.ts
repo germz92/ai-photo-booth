@@ -17,10 +17,43 @@ Rules:
 Gender:
 - Default is gender-neutral. Use person, subject, they/them. Describe clothing by cut, fabric, and formality only if the source already named that garment.
 - Do not add man, woman, male, female, masculine, feminine, boy, girl, his, her, he, she, or gendered tropes unless those ideas already appear in the source prompt, or the user message explicitly asks to adapt for a masculine or feminine look.
-- When asked to adapt for a look, keep the same scene, lighting, framing, and identity. Change wardrobe, hair finish, and presentation for that look. You may use gendered language. Do not caricature or change the person’s face.`;
+- When asked to adapt for a look, this is a gendered rewrite, not a light polish. Follow the look instructions exactly.`;
 
 const GENDER_PATTERN =
   /\b(men|man|women|woman|male|female|masculine|feminine|boy|girl|gentleman|lady|ladies|guys|his|her|hers|him|he|she|gender(?:ed)?|non[- ]?binary|trans(?:gender)?)\b/i;
+
+const LOOK_ADAPT: Record<"masculine" | "feminine", string> = {
+  masculine: `Rewrite this as a masculine look for Qwen Image Edit.
+
+Required:
+- First sentence must be: "Transform the person in the input image into a man..." then continue with framing and the scene.
+- Use he / him / his throughout. Never use they, she, woman, or feminine.
+- Keep his recognizable facial features, skin tone, and general pose. Present him as a man.
+- Wardrobe must be explicit men's clothing at the same formality as the source. Map garments instead of leaving unisex language:
+  - formal / black-tie → tuxedo or dark tailored suit, dress shirt, tie or bow tie
+  - corporate / event-ready → tailored men's suit or blazer, dress shirt, trousers, optional tie
+  - smart casual → men's jacket or overshirt, collared shirt or knit, tailored trousers
+  - outerwear / weather → men's coat, jacket, or hoodie as the scene needs
+  - if the source names a dress, gown, blouse, or skirt, replace it with the men's equivalent at the same formality
+- Name real garments (suit jacket, shirt, trousers, coat). Do not say "masculine attire" or "gendered styling".
+- Hair should read as a natural men's finish while still resembling the subject.
+- Keep the same scene, lighting, atmosphere, and half-body framing.`,
+  feminine: `Rewrite this as a feminine look for Qwen Image Edit.
+
+Required:
+- First sentence must be: "Transform the person in the input image into a woman..." then continue with framing and the scene.
+- Use she / her / hers throughout. Never use they, he, man, or masculine.
+- Keep her recognizable facial features, skin tone, and general pose. Present her as a woman.
+- Wardrobe must be explicit women's clothing at the same formality as the source. Map garments instead of leaving unisex language:
+  - formal / black-tie → evening gown or tailored formal dress, refined heels if visible
+  - corporate / event-ready → tailored dress, or blouse with a blazer and trousers or a pencil skirt
+  - smart casual → blouse or knit, tailored trousers or midi skirt, women's jacket
+  - outerwear / weather → women's coat, wrap, or tailored jacket as the scene needs
+  - if the source names a tuxedo, suit-and-tie, or men's shirt, replace it with the women's equivalent at the same formality
+- Name real garments (dress, blouse, blazer, gown, coat). Do not say "feminine attire" or "gendered styling".
+- Hair should read as a natural women's finish while still resembling the subject.
+- Keep the same scene, lighting, atmosphere, and half-body framing.`,
+};
 
 export function promptMentionsGender(text: string) {
   return GENDER_PATTERN.test(text);
@@ -52,9 +85,7 @@ export async function optimizeQwenPrompt(input: {
   ];
   if (hint) userParts.push(`Theme title / notes: ${hint}`);
   if (adaptLook) {
-    userParts.push(
-      `Adapt this prompt for a ${look} look. Include gender in wardrobe, hair, and styling. Keep the same scene, lighting, framing, and identity. Output only the rewritten prompt.`,
-    );
+    userParts.push(LOOK_ADAPT[look]);
   } else if (gendered && look) {
     userParts.push(`The source prompt already implies a ${look} look. Keep that direction.`);
   } else {
