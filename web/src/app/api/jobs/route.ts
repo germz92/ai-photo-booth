@@ -8,6 +8,8 @@ import { submitRunpodJob } from "@/lib/runpod";
 import { putObject } from "@/lib/storage";
 import { originalThumbKey, saveThumb } from "@/lib/thumbs";
 import { creditErrorResponse, CreditError, withGenerationCredit } from "@/lib/users";
+import { loadThemeLooks } from "@/lib/theme-looks-db";
+import { isLookId, resolveThemePrompt } from "@/lib/theme-looks";
 import { createJobSchema, normalizePhone } from "@/lib/validate";
 import { clampBatch } from "@/lib/workflow";
 
@@ -26,11 +28,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "Photo must be under 6MB" }, { status: 400 });
   }
 
+  const lookValue = String(form.get("look") || "");
   const parsed = createJobSchema.safeParse({
     email: String(form.get("email") || ""),
     phone: String(form.get("phone") || ""),
     eventId: String(form.get("eventId") || ""),
     themeId: String(form.get("themeId") || ""),
+    look: isLookId(lookValue) ? lookValue : undefined,
     skipContact: String(form.get("skipContact") || "") === "1",
   });
   if (!parsed.success) {
@@ -57,6 +61,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Theme is not available" }, { status: 400 });
   }
 
+  const looks = await loadThemeLooks(theme.id, theme.prompt);
+  if (looks.splitLooks && !parsed.data.look) {
+    return Response.json({ error: "Please choose a look" }, { status: 400 });
+  }
+  const prompt = resolveThemePrompt(looks, theme.prompt, parsed.data.look);
+  if (!prompt) {
+    return Response.json({ error: "Theme is not configured" }, { status: 400 });
+  }
+
   const bytes = Buffer.from(await photo.arrayBuffer());
   const imageBase64 = bytes.toString("base64");
   const batch = clampBatch(theme.event.batch, 1);
@@ -67,7 +80,7 @@ export async function POST(request: Request) {
       const [submitted] = await Promise.all([
         submitRunpodJob({
           imageBase64,
-          qwenPrompt: theme.prompt,
+          qwenPrompt: prompt,
           batch,
         }),
         putObject(originalKey, bytes, photo.type || "image/jpeg"),
@@ -90,7 +103,7 @@ export async function POST(request: Request) {
           resultExpiresAt: resultExpiry(),
           kreaSeed: String(submitted.kreaSeed),
           qwenSeed: String(submitted.qwenSeed),
-          prompt: theme.prompt,
+          prompt,
           batch: submitted.batch,
           emailStatus: email ? "pending" : "skipped",
           smsStatus: phone ? "pending" : "skipped",

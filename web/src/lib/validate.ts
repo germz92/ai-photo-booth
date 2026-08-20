@@ -28,6 +28,7 @@ export const createJobSchema = z
     phone: z.string().trim().optional(),
     eventId: z.string().trim().min(1, "Event is required"),
     themeId: z.string().trim().min(1, "Theme is required"),
+    look: z.enum(["masculine", "feminine"]).optional(),
     skipContact: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {

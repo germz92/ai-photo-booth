@@ -7,6 +7,9 @@ type Theme = {
   id: string;
   title: string;
   prompt: string;
+  splitLooks: boolean;
+  masculinePrompt: string;
+  femininePrompt: string;
   sortOrder: number;
   active: boolean;
 };
@@ -31,9 +34,21 @@ function allowsUpload(value: boolean | undefined) {
   return value !== false;
 }
 
+function withLooks(theme: Theme): Theme {
+  return {
+    ...theme,
+    splitLooks: theme.splitLooks === true,
+    masculinePrompt: theme.masculinePrompt || "",
+    femininePrompt: theme.femininePrompt || "",
+  };
+}
+
 export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent }) {
   const router = useRouter();
-  const [event, setEvent] = useState(initialEvent);
+  const [event, setEvent] = useState({
+    ...initialEvent,
+    themes: initialEvent.themes.map(withLooks),
+  });
   const [name, setName] = useState(initialEvent.name);
   const [eventDate, setEventDate] = useState(dateValue(initialEvent.eventDate));
   const [status, setStatus] = useState(initialEvent.status);
@@ -42,6 +57,9 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
   const [themeModal, setThemeModal] = useState<ThemeModalState | null>(null);
   const [themeTitle, setThemeTitle] = useState("");
   const [themePrompt, setThemePrompt] = useState("");
+  const [splitLooks, setSplitLooks] = useState(false);
+  const [masculinePrompt, setMasculinePrompt] = useState("");
+  const [femininePrompt, setFemininePrompt] = useState("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
@@ -52,14 +70,31 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
     setError("");
     setThemeTitle("");
     setThemePrompt("");
+    setSplitLooks(false);
+    setMasculinePrompt("");
+    setFemininePrompt("");
     setThemeModal({ mode: "add" });
   }
 
   function openEditTheme(theme: Theme) {
+    const next = withLooks(theme);
     setError("");
-    setThemeTitle(theme.title);
-    setThemePrompt(theme.prompt);
-    setThemeModal({ mode: "edit", theme });
+    setThemeTitle(next.title);
+    setThemePrompt(next.prompt);
+    setSplitLooks(next.splitLooks);
+    setMasculinePrompt(next.masculinePrompt || next.prompt);
+    setFemininePrompt(next.femininePrompt || next.prompt);
+    setThemeModal({ mode: "edit", theme: next });
+  }
+
+  function toggleSplitLooks(enabled: boolean) {
+    setSplitLooks(enabled);
+    if (enabled) {
+      setMasculinePrompt((current) => current || themePrompt);
+      setFemininePrompt((current) => current || themePrompt);
+    } else {
+      setThemePrompt((current) => current || masculinePrompt || femininePrompt);
+    }
   }
 
   async function reload() {
@@ -76,7 +111,7 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
         status: json.event.status,
         batch: json.event.batch || 1,
         allowUpload: allowsUpload(json.event.allowUpload),
-        themes: json.event.themes,
+        themes: json.event.themes.map(withLooks),
       });
       setName(json.event.name);
       setEventDate(dateValue(String(json.event.eventDate)));
@@ -110,11 +145,18 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
     if (!themeModal) return;
     setBusy(true);
     setError("");
+    const payload = {
+      title: themeTitle,
+      prompt: themePrompt,
+      splitLooks,
+      masculinePrompt,
+      femininePrompt,
+    };
     if (themeModal.mode === "add") {
       const response = await fetch(`/api/admin/events/${event.id}/themes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: themeTitle, prompt: themePrompt }),
+        body: JSON.stringify(payload),
       });
       const json = (await response.json()) as { error?: string };
       setBusy(false);
@@ -127,8 +169,7 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: themeTitle,
-          prompt: themePrompt,
+          ...payload,
           active: themeModal.theme.active,
           sortOrder: themeModal.theme.sortOrder,
         }),
@@ -306,6 +347,9 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
                 </button>
                 <p className="min-w-0 flex-1 truncate font-medium">
                   {theme.title}
+                  {theme.splitLooks ? (
+                    <span className="ml-2 text-xs font-normal tracking-normal text-muted">two looks</span>
+                  ) : null}
                   {theme.active ? "" : <span className="ml-2 text-xs text-muted">(inactive)</span>}
                 </p>
                 <div className="flex shrink-0 gap-2">
@@ -374,15 +418,53 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
                 required
               />
             </label>
-            <label className="mt-4 grid gap-2">
-              <span className="booth-label">Prompt</span>
-              <textarea
-                className="booth-input min-h-40 py-3"
-                value={themePrompt}
-                onChange={(change) => setThemePrompt(change.target.value)}
-                required
+            <label className="mt-4 flex items-start gap-3 rounded border border-white/10 bg-black/20 px-4 py-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                style={{ accentColor: "var(--accent)" }}
+                checked={splitLooks}
+                onChange={(change) => toggleSplitLooks(change.target.checked)}
               />
+              <span>
+                <span className="booth-label">Offer masculine and feminine looks</span>
+                <span className="mt-1 block text-sm text-muted">
+                  Guests choose a look after picking this theme. Use this when clothing, hair, or styling should differ.
+                </span>
+              </span>
             </label>
+            {splitLooks ? (
+              <>
+                <label className="mt-4 grid gap-2">
+                  <span className="booth-label">Masculine prompt</span>
+                  <textarea
+                    className="booth-input min-h-32 py-3"
+                    value={masculinePrompt}
+                    onChange={(change) => setMasculinePrompt(change.target.value)}
+                    required
+                  />
+                </label>
+                <label className="mt-4 grid gap-2">
+                  <span className="booth-label">Feminine prompt</span>
+                  <textarea
+                    className="booth-input min-h-32 py-3"
+                    value={femininePrompt}
+                    onChange={(change) => setFemininePrompt(change.target.value)}
+                    required
+                  />
+                </label>
+              </>
+            ) : (
+              <label className="mt-4 grid gap-2">
+                <span className="booth-label">Prompt</span>
+                <textarea
+                  className="booth-input min-h-40 py-3"
+                  value={themePrompt}
+                  onChange={(change) => setThemePrompt(change.target.value)}
+                  required
+                />
+              </label>
+            )}
 
             {error ? <p className="mt-4 text-sm text-[var(--danger)]">{error}</p> : null}
 

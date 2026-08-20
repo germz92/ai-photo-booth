@@ -6,6 +6,7 @@ import {
   matchingOverlayPlacement,
 } from "@/lib/overlay";
 import { getEventBranding, prisma, setDocumentFields } from "@/lib/prisma";
+import { attachThemeLooks } from "@/lib/theme-looks-db";
 import { clampBatch } from "@/lib/workflow";
 
 export const runtime = "nodejs";
@@ -26,9 +27,11 @@ export async function GET(
   });
   if (!event) return Response.json({ error: "Not found" }, { status: 404 });
   const branding = await getEventBranding(id);
+  const themes = await attachThemeLooks(event.themes);
   return Response.json({
     event: {
       ...event,
+      themes,
       allowUpload: branding.allowUpload,
       wallTitle: branding.wallTitle,
       showWallTitle: branding.showWallTitle,

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { CaptureBooth } from "@/components/CaptureBooth";
 import { userOwnsEvent } from "@/lib/access";
 import { eventAllowsUpload, prisma } from "@/lib/prisma";
+import { attachThemeLooks } from "@/lib/theme-looks-db";
 import { getUserAccount } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
@@ -32,18 +33,24 @@ export default async function KioskPage({
       themes: {
         where: { active: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, title: true },
+        select: { id: true, title: true, prompt: true },
       },
     },
   });
   if (!event || event.status === "archived") notFound();
+
+  const themes = (await attachThemeLooks(event.themes)).map(({ id, title, splitLooks }) => ({
+    id,
+    title,
+    splitLooks,
+  }));
 
   return (
     <CaptureBooth
       eventId={event.id}
       eventName={event.name}
       allowUpload={await eventAllowsUpload(event.id)}
-      themes={event.themes}
+      themes={themes}
       credits={account.credits}
     />
   );

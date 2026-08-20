@@ -1,5 +1,7 @@
 import { requireOwnedEvent } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
+import { attachThemeLooks, saveThemeLooks } from "@/lib/theme-looks-db";
+import { validateThemeLooksInput } from "@/lib/theme-looks";
 
 export const runtime = "nodejs";
 
@@ -13,11 +15,19 @@ export async function POST(
   const event = await prisma.event.findUnique({ where: { id } });
   if (!event) return Response.json({ error: "Event not found" }, { status: 404 });
 
-  const body = (await request.json()) as { title?: string; prompt?: string };
+  const body = (await request.json()) as {
+    title?: string;
+    prompt?: string;
+    splitLooks?: boolean;
+    masculinePrompt?: string;
+    femininePrompt?: string;
+  };
   const title = String(body.title || "").trim();
-  const prompt = String(body.prompt || "").trim();
   if (!title) return Response.json({ error: "Title is required" }, { status: 400 });
-  if (!prompt) return Response.json({ error: "Prompt is required" }, { status: 400 });
+  const parsedLooks = validateThemeLooksInput(body);
+  if ("error" in parsedLooks) {
+    return Response.json({ error: parsedLooks.error }, { status: 400 });
+  }
 
   const last = await prisma.theme.findFirst({
     where: { eventId: id },
@@ -27,12 +37,14 @@ export async function POST(
     data: {
       eventId: id,
       title,
-      prompt,
+      prompt: parsedLooks.prompt,
       sortOrder: (last?.sortOrder ?? -1) + 1,
       active: true,
     },
   });
-  return Response.json({ theme });
+  await saveThemeLooks(theme.id, parsedLooks.looks);
+  const [withLooks] = await attachThemeLooks([theme]);
+  return Response.json({ theme: withLooks });
 }
 
 export async function PATCH(

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { QrCodeImage } from "./QrCodeImage";
 import { APP_NAME } from "@/lib/brand";
+import { LOOK_OPTIONS, type LookId } from "@/lib/theme-looks";
 
 type Step = "camera" | "countdown" | "form" | "qr" | "done";
 
-type LiveTheme = { id: string; title: string };
+type LiveTheme = { id: string; title: string; splitLooks?: boolean };
 
 /** Flux Krea / booth portrait size. FluxKontextImageScale then maps this to 832x1248. */
 const CAPTURE_WIDTH = 832;
@@ -59,6 +60,7 @@ export function CaptureBooth({
   const streamRef = useRef<MediaStream | null>(null);
   const [step, setStep] = useState<Step>("camera");
   const [themeId, setThemeId] = useState(themes.length === 1 ? themes[0].id : "");
+  const [look, setLook] = useState<LookId | "">("");
   const [count, setCount] = useState(3);
   const [photo, setPhoto] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -148,6 +150,7 @@ export function CaptureBooth({
   function retake() {
     setPhoto(null);
     setThemeId(themes.length === 1 ? themes[0].id : "");
+    setLook("");
     setError("");
     setStep("camera");
   }
@@ -156,6 +159,7 @@ export function CaptureBooth({
     setEmail("");
     setPhone("");
     setThemeId(themes.length === 1 ? themes[0].id : "");
+    setLook("");
     setPhoto(null);
     setError("");
     setResultUrl("");
@@ -207,6 +211,11 @@ export function CaptureBooth({
       setError("Please select a theme.");
       return;
     }
+    const selectedTheme = themes.find((theme) => theme.id === themeId);
+    if (selectedTheme?.splitLooks && !look) {
+      setError("Please choose a look.");
+      return;
+    }
     if (!viaQr && !email.trim() && !phone.trim()) {
       setError("Enter an email or mobile number, or use Skip — QR code only.");
       return;
@@ -221,6 +230,7 @@ export function CaptureBooth({
       form.append("phone", viaQr ? "" : phone);
       form.append("eventId", eventId);
       form.append("themeId", themeId);
+      if (look) form.append("look", look);
       if (viaQr) form.append("skipContact", "1");
       const response = await fetch("/api/jobs", { method: "POST", body: form });
       const json = (await response.json()) as { error?: string; resultUrl?: string };
@@ -330,7 +340,7 @@ export function CaptureBooth({
           </div>
           <div className="flex flex-col gap-6 rounded border border-white/10 bg-[var(--panel)] p-6 md:p-8">
             <div>
-              <p className="booth-label">Choose a look</p>
+              <p className="booth-label">Choose a style</p>
               {themes.length === 0 ? (
                 <p className="text-sm text-[var(--danger)]">This event has no active themes.</p>
               ) : (
@@ -341,6 +351,7 @@ export function CaptureBooth({
                       type="button"
                       className={`kiosk-theme-btn ${themeId === theme.id ? "selected" : ""}`}
                       onClick={() => {
+                        if (themeId !== theme.id) setLook("");
                         setThemeId(theme.id);
                         setError("");
                       }}
@@ -351,6 +362,27 @@ export function CaptureBooth({
                 </div>
               )}
             </div>
+            {themes.find((theme) => theme.id === themeId)?.splitLooks ? (
+              <div>
+                <p className="booth-label">Choose a look</p>
+                <p className="mb-3 text-sm text-muted">Pick the styling that fits this portrait.</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {LOOK_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`kiosk-theme-btn ${look === option.id ? "selected" : ""}`}
+                      onClick={() => {
+                        setLook(option.id);
+                        setError("");
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <label className="grid gap-2">
               <span className="booth-label">
                 Email <span className="normal-case tracking-normal text-muted">(or mobile)</span>
