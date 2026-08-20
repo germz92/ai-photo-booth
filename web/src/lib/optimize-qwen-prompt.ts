@@ -13,11 +13,12 @@ Rules:
 - Do not mention LoRAs, samplers, CFG, steps, ComfyUI, or negative prompts.
 - Do not add artist names, camera EXIF, or a long keyword dump.
 - Do not invent a different person. This is an edit of the supplied photo.
+- Do not invent a new location. If the source does not name a landscape, sky, or outdoor setting, keep it a portrait with the same implied background. Never add rolling hills, desert, prairie, mountains, or a cinematic establishing shot unless those words are already in the source.
 
 Gender:
 - Default is gender-neutral. Use person, subject, they/them. Describe clothing by cut, fabric, and formality only if the source already named that garment.
 - Do not add man, woman, male, female, masculine, feminine, boy, girl, his, her, he, she, or gendered tropes unless those ideas already appear in the source prompt, or the user message explicitly asks to adapt for a masculine or feminine look.
-- When asked to adapt for a look, this is a gendered rewrite, not a light polish. Follow the look instructions exactly.`;
+- When asked to adapt for a look, change only gendered presentation, pronouns, and wardrobe. Copy the scene, background, lighting, atmosphere, props, and framing from the source. Follow the look instructions exactly.`;
 
 const GENDER_PATTERN =
   /\b(men|man|women|woman|male|female|masculine|feminine|boy|girl|gentleman|lady|ladies|guys|his|her|hers|him|he|she|gender(?:ed)?|non[- ]?binary|trans(?:gender)?)\b/i;
@@ -25,34 +26,40 @@ const GENDER_PATTERN =
 const LOOK_ADAPT: Record<"masculine" | "feminine", string> = {
   masculine: `Rewrite this as a masculine look for Qwen Image Edit.
 
+Scene lock (do not break this):
+- Copy the source scene, background, location, lighting, atmosphere, props, and framing.
+- Do not relocate the portrait. Do not add rolling hills, desert, prairie, mountains, sky vistas, or any setting the source did not already name.
+- If the source is a cinematic/studio portrait, keep it that. Genre words like western, noir, or royal describe wardrobe and mood, not a new landscape.
+
 Required:
-- First sentence must be: "Transform the person in the input image into a man..." then continue with framing and the scene.
+- First sentence must be: "Transform the person in the input image into a man..." then continue with the SAME framing and the SAME scene as the source.
 - Use he / him / his throughout. Never use they, she, woman, or feminine.
 - Keep his recognizable facial features, skin tone, and general pose. Present him as a man.
-- Wardrobe must be explicit men's clothing at the same formality as the source. Map garments instead of leaving unisex language:
+- Wardrobe must stay in the source genre and formality. Only gender the garments. If the source is western, keep western wear (shirt, jacket, trousers, hat as already implied). Do not restyle into a tuxedo or corporate suit unless the source was already formal/corporate.
+- For generic event themes with no genre wardrobe, map formality:
   - formal / black-tie → tuxedo or dark tailored suit, dress shirt, tie or bow tie
   - corporate / event-ready → tailored men's suit or blazer, dress shirt, trousers, optional tie
   - smart casual → men's jacket or overshirt, collared shirt or knit, tailored trousers
-  - outerwear / weather → men's coat, jacket, or hoodie as the scene needs
-  - if the source names a dress, gown, blouse, or skirt, replace it with the men's equivalent at the same formality
-- Name real garments (suit jacket, shirt, trousers, coat). Do not say "masculine attire" or "gendered styling".
-- Hair should read as a natural men's finish while still resembling the subject.
-- Keep the same scene, lighting, atmosphere, and half-body framing.`,
+- Name real garments. Do not say "masculine attire" or "gendered styling".
+- Hair should read as a natural men's finish while still resembling the subject.`,
   feminine: `Rewrite this as a feminine look for Qwen Image Edit.
 
+Scene lock (do not break this):
+- Copy the source scene, background, location, lighting, atmosphere, props, and framing.
+- Do not relocate the portrait. Do not add rolling hills, desert, prairie, mountains, sky vistas, or any setting the source did not already name.
+- If the source is a cinematic/studio portrait, keep it that. Genre words like western, noir, or royal describe wardrobe and mood, not a new landscape.
+
 Required:
-- First sentence must be: "Transform the person in the input image into a woman..." then continue with framing and the scene.
+- First sentence must be: "Transform the person in the input image into a woman..." then continue with the SAME framing and the SAME scene as the source.
 - Use she / her / hers throughout. Never use they, he, man, or masculine.
 - Keep her recognizable facial features, skin tone, and general pose. Present her as a woman.
-- Wardrobe must be explicit women's clothing at the same formality as the source. Map garments instead of leaving unisex language:
+- Wardrobe must stay in the source genre and formality. Only gender the garments. If the source is western, keep western wear (shirt, jacket, skirt or trousers, hat as already implied). Do not restyle into an evening gown unless the source was already formal/black-tie.
+- For generic event themes with no genre wardrobe, map formality:
   - formal / black-tie → evening gown or tailored formal dress, refined heels if visible
   - corporate / event-ready → tailored dress, or blouse with a blazer and trousers or a pencil skirt
   - smart casual → blouse or knit, tailored trousers or midi skirt, women's jacket
-  - outerwear / weather → women's coat, wrap, or tailored jacket as the scene needs
-  - if the source names a tuxedo, suit-and-tie, or men's shirt, replace it with the women's equivalent at the same formality
-- Name real garments (dress, blouse, blazer, gown, coat). Do not say "feminine attire" or "gendered styling".
-- Hair should read as a natural women's finish while still resembling the subject.
-- Keep the same scene, lighting, atmosphere, and half-body framing.`,
+- Name real garments. Do not say "feminine attire" or "gendered styling".
+- Hair should read as a natural women's finish while still resembling the subject.`,
 };
 
 export function promptMentionsGender(text: string) {
