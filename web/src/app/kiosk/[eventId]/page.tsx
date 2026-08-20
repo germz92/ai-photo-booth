@@ -5,6 +5,8 @@ import { userOwnsEvent } from "@/lib/access";
 import { eventAllowsUpload, prisma } from "@/lib/prisma";
 import { getUserAccount } from "@/lib/users";
 
+export const dynamic = "force-dynamic";
+
 export default async function KioskPage({
   params,
 }: {

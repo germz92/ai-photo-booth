@@ -1,11 +1,19 @@
 import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
+import { prisma, repairAdminUserDateFields } from "./prisma";
 import { normalizeEmail, promoteToSuperadmin } from "./users";
 
+function duringProductionBuild() {
+  return process.env.NEXT_PHASE === "phase-production-build";
+}
+
 export async function ensureBootstrapAdmin() {
+  if (duringProductionBuild()) return;
+
   const email = normalizeEmail(process.env.ADMIN_BOOTSTRAP_EMAIL || "");
   const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
   if (!email || !password) return;
+
+  await repairAdminUserDateFields();
 
   const existing = await prisma.adminUser.findUnique({ where: { email } });
   if (existing) {

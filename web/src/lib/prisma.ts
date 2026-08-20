@@ -21,6 +21,15 @@ export function oidValue(value: unknown) {
   return "";
 }
 
+export function mongoDate(value: Date) {
+  return { $date: value.toISOString() };
+}
+
+function toMongoFieldValue(value: unknown): unknown {
+  if (value instanceof Date) return mongoDate(value);
+  return value;
+}
+
 export async function runMongoCommand<T = Record<string, unknown>>(command: object) {
   return prisma.$runCommandRaw(command as never) as Promise<T>;
 }
@@ -30,12 +39,15 @@ export async function setDocumentFields(
   id: string,
   fields: Record<string, unknown>,
 ) {
+  const converted = Object.fromEntries(
+    Object.entries(fields).map(([key, value]) => [key, toMongoFieldValue(value)]),
+  );
   await runMongoCommand({
     update: collection,
     updates: [
       {
         q: { _id: { $oid: id } },
-        u: { $set: fields },
+        u: { $set: converted },
       },
     ],
   });
@@ -97,4 +109,32 @@ export async function getEventBranding(id: string) {
 export async function eventAllowsUpload(id: string) {
   const branding = await getEventBranding(id);
   return branding.allowUpload;
+}
+
+const ADMIN_DATE_FIELDS = ["lastLoginAt", "inviteExpiresAt", "resetExpiresAt"] as const;
+
+export async function repairAdminUserDateFields() {
+  const result = await runMongoCommand<{ cursor?: { firstBatch?: Array<Record<string, unknown>> } }>({
+    find: "AdminUser",
+    filter: {},
+    projection: {
+      lastLoginAt: 1,
+      inviteExpiresAt: 1,
+      resetExpiresAt: 1,
+    },
+  });
+  for (const doc of result.cursor?.firstBatch || []) {
+    const id = oidValue(doc._id);
+    if (!id) continue;
+    const patch: Record<string, unknown> = {};
+    for (const field of ADMIN_DATE_FIELDS) {
+      const value = doc[field];
+      if (typeof value !== "string") continue;
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) patch[field] = date;
+    }
+    if (Object.keys(patch).length) {
+      await setDocumentFields("AdminUser", id, patch);
+    }
+  }
 }

@@ -4,6 +4,8 @@ import { APP_NAME } from "@/lib/brand";
 import { ensureBootstrapAdmin } from "@/lib/auth-bootstrap";
 import { getUserAccount } from "@/lib/users";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminProtectedLayout({
   children,
 }: {

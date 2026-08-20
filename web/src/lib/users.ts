@@ -3,7 +3,7 @@ import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { APP_EMAIL_FROM, APP_NAME } from "./brand";
 import { appUrl } from "./runpod";
-import { getDocument, oidValue, prisma, setDocumentFields } from "./prisma";
+import { getDocument, mongoDate, oidValue, prisma, setDocumentFields } from "./prisma";
 import type { CreditReason, PublicUser, UserRole, UserStatus } from "./user-types";
 
 export type { CreditReason, LedgerEntry, PublicUser, UserRole, UserStatus } from "./user-types";
@@ -176,7 +176,7 @@ async function insertLedger(entry: {
     reason: entry.reason,
     note: entry.note || "",
     createdBy: entry.createdBy || "system",
-    createdAt: new Date(),
+    createdAt: mongoDate(new Date()),
   };
   if (entry.jobId) document.jobId = { $oid: entry.jobId };
   await prisma.$runCommandRaw({

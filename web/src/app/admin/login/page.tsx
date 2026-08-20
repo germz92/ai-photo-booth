@@ -5,6 +5,8 @@ import { APP_NAME } from "@/lib/brand";
 import { getUserAccount } from "@/lib/users";
 import { LoginForm } from "./LoginForm";
 
+export const dynamic = "force-dynamic";
+
 function safeCallback(value?: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return "/admin";

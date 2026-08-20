@@ -3,6 +3,8 @@ import { auth, signOut } from "@/auth";
 import { ensureBootstrapAdmin } from "@/lib/auth-bootstrap";
 import { getUserAccount } from "@/lib/users";
 
+export const dynamic = "force-dynamic";
+
 export default async function TestLayout({ children }: { children: React.ReactNode }) {
   await ensureBootstrapAdmin();
   const session = await auth();
