@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { AutoAdaptLooksButton, OptimizePromptButton } from "@/components/OptimizePromptButton";
 
 type Theme = {
   id: string;
@@ -306,7 +307,7 @@ export function EventSettings({
             Each guest capture generates this many portraits. 1 is fastest; 4 takes longer on the GPU.
           </p>
         </div>
-        <button type="submit" className="booth-button justify-self-start" disabled={busy}>
+        <button type="submit" className="booth-button w-full justify-self-start sm:w-auto" disabled={busy}>
           Save event
         </button>
       </form>
@@ -314,14 +315,14 @@ export function EventSettings({
 
       {showThemes ? (
       <section className="grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xl font-light tracking-[0.08em] uppercase">Themes</h2>
             <p className="mt-1 text-sm text-muted">
               Guests see the title only. Drag the handle or use Up/Down to change kiosk order.
             </p>
           </div>
-          <button type="button" className="booth-button min-h-10 px-4 text-xs" onClick={openAddTheme}>
+          <button type="button" className="booth-button min-h-11 w-full px-4 text-xs sm:w-auto" onClick={openAddTheme}>
             Add theme
           </button>
         </div>
@@ -370,7 +371,7 @@ export function EventSettings({
                 <div className="flex shrink-0 gap-2">
                   <button
                     type="button"
-                    className="booth-button-secondary min-h-10 px-3 text-xs"
+                    className="theme-row-move booth-button-secondary min-h-10 px-3 text-xs"
                     disabled={index === 0}
                     onClick={() => void moveTheme(index, -1)}
                   >
@@ -378,7 +379,7 @@ export function EventSettings({
                   </button>
                   <button
                     type="button"
-                    className="booth-button-secondary min-h-10 px-3 text-xs"
+                    className="theme-row-move booth-button-secondary min-h-10 px-3 text-xs"
                     disabled={index === event.themes.length - 1}
                     onClick={() => void moveTheme(index, 1)}
                   >
@@ -451,35 +452,73 @@ export function EventSettings({
             </label>
             {splitLooks ? (
               <>
-                <label className="mt-4 grid gap-2">
-                  <span className="booth-label">Masculine prompt</span>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-muted">
+                    Auto adapt keeps this theme and writes masculine and feminine wardrobe into each prompt.
+                  </p>
+                  <AutoAdaptLooksButton
+                    source={themePrompt.trim() || masculinePrompt.trim() || femininePrompt.trim()}
+                    hint={themeTitle}
+                    disabled={busy}
+                    onMasculine={setMasculinePrompt}
+                    onFeminine={setFemininePrompt}
+                  />
+                </div>
+                <div className="mt-4 grid gap-2">
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="booth-label mb-0">Masculine prompt</span>
+                    <OptimizePromptButton
+                      value={masculinePrompt}
+                      onChange={setMasculinePrompt}
+                      look="masculine"
+                      hint={themeTitle}
+                      disabled={busy}
+                    />
+                  </span>
                   <textarea
                     className="booth-input min-h-32 py-3"
                     value={masculinePrompt}
                     onChange={(change) => setMasculinePrompt(change.target.value)}
                     required
                   />
-                </label>
-                <label className="mt-4 grid gap-2">
-                  <span className="booth-label">Feminine prompt</span>
+                </div>
+                <div className="mt-4 grid gap-2">
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="booth-label mb-0">Feminine prompt</span>
+                    <OptimizePromptButton
+                      value={femininePrompt}
+                      onChange={setFemininePrompt}
+                      look="feminine"
+                      hint={themeTitle}
+                      disabled={busy}
+                    />
+                  </span>
                   <textarea
                     className="booth-input min-h-32 py-3"
                     value={femininePrompt}
                     onChange={(change) => setFemininePrompt(change.target.value)}
                     required
                   />
-                </label>
+                </div>
               </>
             ) : (
-              <label className="mt-4 grid gap-2">
-                <span className="booth-label">Prompt</span>
+              <div className="mt-4 grid gap-2">
+                <span className="flex items-center justify-between gap-3">
+                  <span className="booth-label mb-0">Prompt</span>
+                  <OptimizePromptButton
+                    value={themePrompt}
+                    onChange={setThemePrompt}
+                    hint={themeTitle}
+                    disabled={busy}
+                  />
+                </span>
                 <textarea
                   className="booth-input min-h-40 py-3"
                   value={themePrompt}
                   onChange={(change) => setThemePrompt(change.target.value)}
                   required
                 />
-              </label>
+              </div>
             )}
 
             {error ? <p className="mt-4 text-sm text-[var(--danger)]">{error}</p> : null}

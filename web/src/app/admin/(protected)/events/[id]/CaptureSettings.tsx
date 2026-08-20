@@ -16,6 +16,25 @@ function shareUrl(path: string | null, fallback: string | null) {
   return fallback || "";
 }
 
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75">
+      {open ? (
+        <>
+          <path strokeLinecap="round" d="M3 3l18 18" />
+          <path d="M9.9 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.2 3.8" />
+          <path d="M6.1 6.1A17.6 17.6 0 0 0 2 12s3.5 7 10 7a10.4 10.4 0 0 0 4.2-.9" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export function CaptureSettings({
   eventId,
   eventName,
@@ -34,7 +53,6 @@ export function CaptureSettings({
   const [busy, setBusy] = useState("");
   const [copied, setCopied] = useState(false);
   const [showPin, setShowPin] = useState(false);
-  const [copiedPin, setCopiedPin] = useState(false);
 
   const link = shareUrl(capture.path, capture.url);
 
@@ -61,17 +79,6 @@ export function CaptureSettings({
     }
   }
 
-  async function copyPin() {
-    if (!capture.pin) return;
-    try {
-      await navigator.clipboard.writeText(capture.pin);
-      setCopiedPin(true);
-      window.setTimeout(() => setCopiedPin(false), 1600);
-    } catch {
-      setError("Could not copy the PIN");
-    }
-  }
-
   async function copyLink() {
     if (!link) return;
     try {
@@ -84,79 +91,71 @@ export function CaptureSettings({
   }
 
   return (
-    <div className={`grid gap-6 ${compact ? "" : "max-w-2xl gap-8"}`}>
+    <div className={`grid gap-4 ${compact ? "" : "max-w-2xl gap-6"}`}>
       {compact ? null : (
-      <div>
-        <h2 className="text-xl font-light tracking-[0.08em] uppercase">Capture settings</h2>
-        <p className="mt-2 text-sm text-muted">
-          Create a shared kiosk link for {eventName}. Anyone with the link and PIN can capture or
-          upload photos into this event. Submissions use your account credits.
-        </p>
-      </div>
+        <div>
+          <h2 className="text-xl font-light tracking-[0.08em] uppercase">Capture settings</h2>
+          <p className="mt-2 text-sm text-muted">
+            Create a shared kiosk link for {eventName}. Anyone with the link and PIN can capture or
+            upload photos into this event. Submissions use your account credits.
+          </p>
+        </div>
       )}
 
-      <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6 md:col-span-3">
+      <div className="grid gap-2">
         <p className="booth-label">Shared kiosk</p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className={`kiosk-theme-btn min-w-24 ${capture.enabled ? "selected" : ""}`}
+            className={`kiosk-theme-btn is-compact min-w-20 ${capture.enabled ? "selected" : ""}`}
             disabled={Boolean(busy)}
             onClick={() => {
               if (!capture.pinSet && pin.length < 4) {
                 setError("Set a 4 to 8 digit PIN before enabling the shared kiosk.");
                 return;
               }
-              void save(
-                { enabled: true, pin: pin || undefined },
-                "Shared kiosk enabled",
-              );
+              void save({ enabled: true, pin: pin || undefined }, "Shared kiosk enabled");
             }}
           >
             Enabled
           </button>
           <button
             type="button"
-            className={`kiosk-theme-btn min-w-24 ${capture.enabled ? "" : "selected"}`}
+            className={`kiosk-theme-btn is-compact min-w-20 ${capture.enabled ? "" : "selected"}`}
             disabled={Boolean(busy)}
             onClick={() => void save({ enabled: false }, "Shared kiosk disabled")}
           >
             Disabled
           </button>
         </div>
-        <p className="text-sm text-muted">
-          When enabled, guests can open the link on their own phone or a spare iPad. The operator
-          kiosk still requires your admin login.
-        </p>
-      </section>
+        <p className="text-sm text-muted">Guests use this link and PIN. The operator kiosk still needs your admin login.</p>
+      </div>
 
-      <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6">
+      <div className="grid gap-2">
         <p className="booth-label">PIN</p>
-        {capture.pin ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="booth-input max-w-xs tracking-[0.3em]">
-              {showPin ? capture.pin : "•".repeat(capture.pin.length)}
+        <div className="flex flex-wrap items-center gap-2">
+          {capture.pin ? (
+            <div className="inline-flex items-center gap-1">
+              <span className="min-w-[5.5rem] font-mono text-sm tracking-[0.28em]">
+                {showPin ? capture.pin : "•".repeat(capture.pin.length)}
+              </span>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded text-muted hover:text-foreground"
+                aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                title={showPin ? "Hide PIN" : "Show PIN"}
+                onClick={() => setShowPin((current) => !current)}
+              >
+                <EyeIcon open={showPin} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              {capture.pinSet ? "PIN is set. Enter a new one to change it." : "4 to 8 digits"}
             </p>
-            <button
-              type="button"
-              className="booth-button-secondary min-h-10 px-4 text-xs"
-              onClick={() => setShowPin((current) => !current)}
-            >
-              {showPin ? "Hide" : "Show"}
-            </button>
-            <button type="button" className="booth-button-secondary min-h-10 px-4 text-xs" onClick={() => void copyPin()}>
-              {copiedPin ? "Copied" : "Copy PIN"}
-            </button>
-          </div>
-        ) : capture.pinSet ? (
-          <p className="text-sm text-muted">PIN is set. Save it again below to show it here.</p>
-        ) : (
-          <p className="text-sm text-muted">Set a 4 to 8 digit PIN for the shared kiosk.</p>
-        )}
-        <label className="grid gap-2">
-          <span className="text-sm text-muted">{capture.pinSet ? "Change PIN" : "New PIN"}</span>
+          )}
           <input
-            className="booth-input max-w-xs tracking-[0.3em]"
+            className="booth-input is-compact max-w-[9rem] tracking-[0.28em]"
             inputMode="numeric"
             autoComplete="off"
             pattern="\d{4,8}"
@@ -168,52 +167,52 @@ export function CaptureSettings({
               event.preventDefault();
               if (pin.length >= 4) void save({ pin }, "PIN saved");
             }}
-            placeholder={capture.pinSet ? "••••" : "1234"}
+            placeholder={capture.pinSet ? "New PIN" : "1234"}
+            aria-label={capture.pinSet ? "New PIN" : "PIN"}
           />
-        </label>
-        <button
-          type="button"
-          className="booth-button justify-self-start min-h-10 px-4 text-xs"
-          disabled={Boolean(busy) || pin.length < 4}
-          onClick={() => void save({ pin }, "PIN saved")}
-        >
-          {capture.pinSet ? "Update PIN" : "Save PIN"}
-        </button>
-      </section>
+          <button
+            type="button"
+            className="booth-button is-compact"
+            disabled={Boolean(busy) || pin.length < 4}
+            onClick={() => void save({ pin }, "PIN saved")}
+          >
+            {capture.pinSet ? "Update" : "Save"}
+          </button>
+        </div>
+      </div>
 
-      <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6">
+      <div className="grid gap-2">
         <p className="booth-label">Shareable link</p>
         {capture.path ? (
           <>
-            <p className="break-all rounded border border-white/10 bg-black/30 px-3 py-3 text-sm">{link || capture.path}</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <p className="min-w-0 w-full truncate rounded border border-white/10 bg-black/30 px-3 py-1.5 text-sm sm:flex-1">
+                {link || capture.path}
+              </p>
+              <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="booth-button min-h-10 px-4 text-xs"
+                className="booth-button is-compact"
                 disabled={!capture.enabled}
                 onClick={() => void copyLink()}
               >
-                {copied ? "Copied" : "Copy link"}
+                {copied ? "Copied" : "Copy"}
               </button>
-              <a
-                className="booth-button-secondary min-h-10 px-4 text-xs"
-                href={capture.path}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a className="booth-button-secondary is-compact" href={capture.path} target="_blank" rel="noreferrer">
                 Open
               </a>
               <button
                 type="button"
-                className="booth-button-secondary min-h-10 px-4 text-xs"
+                className="booth-button-secondary is-compact"
                 disabled={Boolean(busy)}
                 onClick={() => {
                   if (!window.confirm("Create a new link? The current URL will stop working.")) return;
                   void save({ rotateLink: true }, "New link created");
                 }}
               >
-                Rotate link
+                Rotate
               </button>
+              </div>
             </div>
             {!capture.enabled ? (
               <p className="text-sm text-muted">Enable the shared kiosk before guests can use this link.</p>
@@ -222,7 +221,7 @@ export function CaptureSettings({
         ) : (
           <p className="text-sm text-muted">Save a PIN and enable the shared kiosk to generate a link.</p>
         )}
-      </section>
+      </div>
 
       {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       {notice && !error ? <p className="text-sm text-accent">{notice}</p> : null}

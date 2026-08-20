@@ -80,7 +80,7 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
             required
           />
         </label>
-        <button type="submit" className="booth-button self-end" disabled={busy}>
+        <button type="submit" className="booth-button w-full md:w-auto md:self-end" disabled={busy}>
           {busy ? "Saving…" : "Create"}
         </button>
       </form>
@@ -101,9 +101,9 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
                   {dateValue(event.eventDate)} · {event._count.themes} themes · {event._count.jobs} jobs
                 </p>
               </a>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <select
-                  className="booth-input min-h-10 w-32"
+                  className="booth-input min-h-11 min-w-0 flex-1 sm:w-32 sm:flex-none"
                   value={event.status}
                   onChange={(change) => void setStatus(event.id, change.target.value)}
                 >
@@ -111,16 +111,16 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
                   <option value="live">live</option>
                   <option value="archived">archived</option>
                 </select>
-                <a className="booth-button-secondary min-h-10 px-4 text-xs" href={`/admin/events/${event.id}`}>
+                <a className="booth-button-secondary min-h-11 px-4 text-xs" href={`/admin/events/${event.id}`}>
                   Open
                 </a>
                 {event.status !== "archived" ? (
-                  <a className="booth-button min-h-10 px-4 text-xs" href={`/kiosk/${event.id}`}>
+                  <a className="booth-button min-h-11 px-4 text-xs" href={`/kiosk/${event.id}`}>
                     Kiosk
                   </a>
                 ) : null}
                 <a
-                  className="booth-button-secondary min-h-10 px-4 text-xs"
+                  className="booth-button-secondary min-h-11 px-4 text-xs"
                   href={`/e/${event.id}`}
                   target="_blank"
                   rel="noreferrer"

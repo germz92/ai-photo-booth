@@ -179,7 +179,7 @@ export function UserManager({
 
   return (
     <div className="grid gap-10">
-      <form className="grid gap-4 md:grid-cols-[1.4fr_1fr_7rem_auto]" onSubmit={(event) => void onInvite(event)}>
+      <form className="grid gap-4" onSubmit={(event) => void onInvite(event)}>
         <label className="grid gap-1 text-sm">
           Email
           <input
@@ -195,19 +195,21 @@ export function UserManager({
           Name
           <input className="booth-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Optional" />
         </label>
-        <label className="grid gap-1 text-sm">
-          Credits
-          <input
-            className="booth-input"
-            type="number"
-            min={0}
-            value={credits}
-            onChange={(event) => setCredits(event.target.value)}
-          />
-        </label>
-        <button type="submit" className="booth-button self-end" disabled={busy}>
-          {busy ? "Inviting…" : "Invite"}
-        </button>
+        <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+          <label className="grid gap-1 text-sm">
+            Credits
+            <input
+              className="booth-input"
+              type="number"
+              min={0}
+              value={credits}
+              onChange={(event) => setCredits(event.target.value)}
+            />
+          </label>
+          <button type="submit" className="booth-button" disabled={busy}>
+            {busy ? "Inviting…" : "Invite"}
+          </button>
+        </div>
       </form>
       <p className="text-sm text-muted">
         Invited people start as regular users. You can promote active users to superadmin after they accept.

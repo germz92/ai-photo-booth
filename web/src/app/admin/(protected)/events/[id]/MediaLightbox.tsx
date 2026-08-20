@@ -113,10 +113,10 @@ export function MediaLightbox({
           {current.label}
           {canNav ? ` · ${index + 1} / ${items.length}` : ""}
         </p>
-        <button type="button" className="booth-button min-h-10 px-4 text-xs" disabled={downloading} onClick={() => void download()}>
+        <button type="button" className="booth-button min-h-11 px-4 text-xs" disabled={downloading} onClick={() => void download()}>
           {downloading ? "Saving…" : "Download"}
         </button>
-        <button type="button" className="booth-button-secondary min-h-10 px-4 text-xs" onClick={onClose}>
+        <button type="button" className="booth-button-secondary min-h-11 px-4 text-xs" onClick={onClose}>
           Close
         </button>
       </div>

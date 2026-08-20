@@ -207,10 +207,12 @@ export function EventWall({
 
     window.addEventListener("mousemove", show);
     window.addEventListener("pointerdown", show);
+    window.addEventListener("touchstart", show, { passive: true });
     return () => {
       window.clearTimeout(idleTimer.current);
       window.removeEventListener("mousemove", show);
       window.removeEventListener("pointerdown", show);
+      window.removeEventListener("touchstart", show);
     };
   }, []);
 

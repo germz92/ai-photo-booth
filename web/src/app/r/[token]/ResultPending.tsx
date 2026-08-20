@@ -12,8 +12,8 @@ export function ResultPending() {
   }, [router]);
 
   return (
-    <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-6 py-16 text-center">
-      <h1 className="text-2xl font-light tracking-[0.12em] uppercase">Still working</h1>
+    <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-4 py-16 text-center sm:px-6">
+      <h1 className="page-title">Still working</h1>
       <p className="mt-3 text-muted">Your portrait is still being generated. This page updates automatically.</p>
     </main>
   );

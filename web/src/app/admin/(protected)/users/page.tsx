@@ -10,9 +10,9 @@ export default async function UsersPage() {
   if (account?.role !== "superadmin") redirect("/admin");
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <div>
-        <h1 className="text-3xl font-light tracking-[0.12em] uppercase">Users</h1>
+        <h1 className="page-title">Users</h1>
         <p className="mt-2 text-sm text-muted">
           Invite operators, grant credits, and promote other superadmins. One capture or regenerate costs one credit.
         </p>

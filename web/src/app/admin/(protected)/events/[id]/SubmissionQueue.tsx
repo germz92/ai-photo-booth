@@ -131,7 +131,7 @@ export function SubmissionQueue({
 
   return (
     <section className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-light tracking-[0.08em] uppercase">Submission queue</h2>
           <p className="mt-1 flex items-center gap-2 text-xs text-accent">
@@ -139,7 +139,7 @@ export function SubmissionQueue({
             Auto-refresh · {matchingLabel}
           </p>
         </div>
-        <div className="filter-pills">
+        <div className="filter-pills -mx-1 px-1">
           {(["all", "processing", "complete", "failed"] as const).map((value) => (
             <button
               key={value}

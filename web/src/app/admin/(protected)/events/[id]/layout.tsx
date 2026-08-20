@@ -13,13 +13,13 @@ export default async function EventLayout({
   const event = await loadAdminEvent(id);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-10">
       <div>
         <a href="/admin" className="text-sm text-muted underline">
           All events
         </a>
-        <div className="mt-3 flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-light tracking-[0.12em] uppercase">{event.name}</h1>
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <h1 className="page-title min-w-0">{event.name}</h1>
           <EventSettingsLink eventId={event.id} />
         </div>
       </div>

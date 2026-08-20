@@ -22,12 +22,21 @@
 html,
 body {
   height: 100%;
+  overflow-x: clip;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+.page-title {
+  font-size: clamp(1.35rem, 5vw, 1.875rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .booth-label {
@@ -86,6 +95,13 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.booth-button.is-compact,
+.booth-button-secondary.is-compact {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
 .booth-input {
   width: 100%;
   min-height: 3rem;
@@ -102,6 +118,13 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(0, 229, 255, 0.5);
   box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+}
+
+.booth-input.is-compact {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 0.7rem;
+  font-size: 1rem;
 }
 
 textarea.booth-input {
@@ -129,6 +152,14 @@ select.booth-input {
 
 .kiosk-capture:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.3), rgba(0, 184, 255, 0.4));
+}
+
+@media (max-width: 767px) {
+  .kiosk-capture {
+    min-height: 3.5rem;
+    padding: 0.85rem 1.5rem;
+    font-size: 1.05rem;
+  }
 }
 
 .kiosk-viewfinder {
@@ -270,6 +301,12 @@ select.booth-input {
   box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
 }
 
+.kiosk-theme-btn.is-compact {
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+}
+
 .kiosk-look-btn {
   display: flex;
   min-height: 7rem;
@@ -299,15 +336,48 @@ select.booth-input {
   box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
 }
 
+@media (max-width: 767px) {
+  .kiosk-look-btn {
+    min-height: 4.5rem;
+    padding: 0.65rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+.kiosk-form-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (max-width: 1023px) {
+  .kiosk-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -1rem -1rem;
+    padding: 0.75rem 1rem max(0.85rem, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(18, 18, 18, 0.98) 72%, rgba(18, 18, 18, 0.72));
+  }
+}
+
 .filter-pills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.filter-pills::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-pills button,
 .filter-pills a {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   padding: 8px 16px;
   border: 1px solid transparent;
@@ -357,6 +427,43 @@ select.booth-input {
   background: rgba(0, 229, 255, 0.1);
 }
 
+.admin-menu {
+  position: relative;
+}
+
+.admin-menu summary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+}
+
+.admin-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 13rem;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: rgba(18, 18, 18, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+
 .submissions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -381,6 +488,13 @@ select.booth-input {
   transform: translateY(-2px);
   border-color: rgba(0, 229, 255, 0.3);
   box-shadow: 0 4px 20px rgba(0, 229, 255, 0.1);
+}
+
+@media (hover: none) {
+  .submission-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 .submission-media {
@@ -547,7 +661,7 @@ select.booth-input {
   justify-content: center;
   gap: 16px;
   background: rgba(0, 0, 0, 0.92);
-  padding: 24px;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
 }
 
 .lightbox-stage {
@@ -615,6 +729,30 @@ select.booth-input {
   background: rgba(0, 229, 255, 0.15);
 }
 
+@media (max-width: 767px) {
+  .lightbox-stage {
+    padding: 0;
+  }
+
+  .lightbox-nav {
+    width: 52px;
+    height: 52px;
+  }
+
+  .lightbox-nav.prev {
+    left: 4px;
+  }
+
+  .lightbox-nav.next {
+    right: 4px;
+  }
+
+  .lightbox-stage img {
+    max-width: min(94vw, calc(70vh * 832 / 1216));
+    max-height: 70vh;
+  }
+}
+
 .detail-modal {
   width: min(1100px, 94vw);
   max-height: 92vh;
@@ -622,7 +760,13 @@ select.booth-input {
   background: rgba(18, 18, 18, 0.98);
   border: 1px solid rgba(0, 229, 255, 0.3);
   border-radius: 8px;
-  padding: 28px 28px 32px;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .detail-modal {
+    padding: 28px 28px 32px;
+  }
 }
 
 .detail-modal .submission-hero.single {
@@ -646,11 +790,18 @@ select.booth-input {
   background: rgba(18, 18, 18, 0.98);
   border: 1px solid rgba(0, 229, 255, 0.3);
   border-radius: 8px;
-  padding: 28px;
+  padding: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .settings-modal {
+    padding: 28px;
+  }
 }
 
 .theme-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -676,6 +827,7 @@ select.booth-input {
 .theme-handle {
   flex-shrink: 0;
   min-width: 28px;
+  min-height: 44px;
   padding: 0 4px;
   color: #666;
   cursor: grab;
@@ -683,6 +835,16 @@ select.booth-input {
   letter-spacing: -0.12em;
   line-height: 1;
   user-select: none;
+}
+
+.theme-row-move {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .theme-row-move {
+    display: inline-flex;
+  }
 }
 
 .theme-handle:active {
@@ -738,8 +900,8 @@ select.booth-input {
 
 .wall-chrome-btn {
   display: inline-flex;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -776,22 +938,40 @@ select.booth-input {
 
 .wall-header {
   display: flex;
+  min-width: 0;
   flex-shrink: 0;
   align-items: center;
   gap: 1.1rem;
-  padding: 0.85rem 5.5rem 0.7rem 1.5rem;
+  padding: 0.85rem 4.5rem 0.7rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .wall-header {
+    padding: 0.85rem 5.5rem 0.7rem 1.5rem;
+  }
 }
 
 .wall-header img {
-  height: 2.75rem;
+  height: 2.2rem;
   width: auto;
-  max-width: 200px;
+  max-width: min(42vw, 160px);
   object-fit: contain;
+}
+
+@media (min-width: 768px) {
+  .wall-header img {
+    height: 2.75rem;
+    max-width: 200px;
+  }
 }
 
 .wall-header h1 {
   margin: 0;
-  font-size: clamp(1.35rem, 2.4vw, 2.4rem);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1.05rem, 2.4vw, 2.4rem);
   font-weight: 500;
   letter-spacing: 0.04em;
 }

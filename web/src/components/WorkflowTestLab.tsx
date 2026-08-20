@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { OptimizePromptButton } from "./OptimizePromptButton";
 
 type Defaults = {
   configured: boolean;
@@ -120,17 +121,17 @@ export function WorkflowTestLab() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-5xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex min-h-full max-w-5xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs tracking-[0.28em] uppercase text-accent">Workflow test</p>
-          <h1 className="mt-2 text-3xl font-medium tracking-tight">Run one job</h1>
+          <h1 className="mt-2 text-2xl font-medium tracking-tight sm:text-3xl">Run one job</h1>
           <p className="mt-2 max-w-xl text-sm text-muted">
             Uploads a photo to your RunPod endpoint. Edit the Qwen stage prompt below. Keys come from
             web/.env — nothing is typed on this page.
           </p>
         </div>
-        <a className="booth-button-secondary text-xs" href="/admin">
+        <a className="booth-button-secondary min-h-11 w-full px-4 text-xs sm:w-auto" href="/admin">
           Admin
         </a>
       </header>
@@ -160,14 +161,17 @@ export function WorkflowTestLab() {
         </section>
 
         <section className="grid gap-4">
-          <label className="grid gap-2 text-sm">
-            Qwen prompt (node 284)
+          <div className="grid gap-2 text-sm">
+            <span className="flex items-center justify-between gap-3">
+              Qwen prompt (node 284)
+              <OptimizePromptButton value={qwenPrompt} onChange={setQwenPrompt} disabled={busy} />
+            </span>
             <textarea
               className="booth-input min-h-72 py-3"
               value={qwenPrompt}
               onChange={(event) => setQwenPrompt(event.target.value)}
             />
-          </label>
+          </div>
           <label className="grid gap-2 text-sm">
             <span className="flex items-center justify-between">
               Batch

@@ -320,12 +320,12 @@ export function CaptureBooth({
                   >
                     {eventName || APP_NAME}
                   </p>
-                  <h1 className="mt-1 text-xl font-light tracking-[0.2em] text-white uppercase">Look at the camera</h1>
+                  <h1 className="mt-1 text-lg font-light tracking-[0.16em] text-white uppercase sm:text-xl sm:tracking-[0.2em]">Look at the camera</h1>
                 </>
               )}
             </div>
           </div>
-          <div className="pointer-events-auto bg-gradient-to-t from-black/90 to-transparent px-6 pb-10 pt-16 text-center">
+          <div className="pointer-events-auto bg-gradient-to-t from-black/90 to-transparent px-4 pt-12 text-center sm:px-6 sm:pt-16" style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}>
             {error ? <p className="mb-4 text-sm text-[var(--danger)]">{error}</p> : null}
             {step === "camera" ? (
               <div className="flex flex-col items-center gap-4">
@@ -358,12 +358,12 @@ export function CaptureBooth({
   if (step === "form" && photo) {
     return (
       <main className="flex min-h-full flex-col">
-        <header className="border-b border-[rgba(0,229,255,0.1)] bg-[rgba(18,18,18,0.95)] px-6 py-5 text-center">
+        <header className="border-b border-[rgba(0,229,255,0.1)] bg-[rgba(18,18,18,0.95)] px-4 py-4 text-center sm:px-6 sm:py-5" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
           <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
-          <h1 className="mt-2 text-xl font-light tracking-[0.16em] uppercase">Send your portrait</h1>
+          <h1 className="page-title mt-2 tracking-[0.12em] sm:tracking-[0.16em]">Send your portrait</h1>
         </header>
         <form
-          className="mx-auto grid w-full max-w-5xl flex-1 gap-8 px-6 py-8 lg:grid-cols-[300px_1fr]"
+          className="mx-auto grid w-full max-w-5xl flex-1 gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 lg:grid-cols-[300px_1fr]"
           onSubmit={(event) => void submit(event)}
         >
           <div className="flex flex-col gap-3">
@@ -371,14 +371,14 @@ export function CaptureBooth({
             <img
               src={photo}
               alt="Your photo"
-              className="w-full rounded border border-white/10 object-cover"
+              className="mx-auto w-full max-w-xs rounded border border-white/10 object-cover lg:max-w-none"
               style={{ aspectRatio: `${CAPTURE_WIDTH} / ${CAPTURE_HEIGHT}` }}
             />
             <button type="button" className="booth-button-secondary w-full" onClick={retake}>
               Retake
             </button>
           </div>
-          <div className="flex flex-col gap-6 rounded border border-white/10 bg-[var(--panel)] p-6 md:p-8">
+          <div className="flex flex-col gap-5 rounded border border-white/10 bg-[var(--panel)] p-4 lg:gap-6 lg:p-8">
             <div>
               <p className="booth-label">Choose a style</p>
               {themes.length === 0 ? (
@@ -456,17 +456,19 @@ export function CaptureBooth({
               We’ll send a private link when your portrait is ready. Provide email, mobile, or skip and scan a QR code.
             </p>
             {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
-            <button type="submit" className="booth-button w-full" disabled={busy || credits < 1}>
-              {busy ? "Sending…" : "Send my portrait"}
-            </button>
-            <button
-              type="button"
-              className="booth-button-secondary w-full"
-              disabled={busy || credits < 1}
-              onClick={() => void submit(null, true)}
-            >
-              {busy ? "Creating link…" : "Skip - QR code only"}
-            </button>
+            <div className="kiosk-form-actions">
+              <button type="submit" className="booth-button w-full" disabled={busy || credits < 1}>
+                {busy ? "Sending…" : "Send my portrait"}
+              </button>
+              <button
+                type="button"
+                className="booth-button-secondary w-full"
+                disabled={busy || credits < 1}
+                onClick={() => void submit(null, true)}
+              >
+                {busy ? "Creating link…" : "Skip - QR code only"}
+              </button>
+            </div>
           </div>
         </form>
       </main>
@@ -475,17 +477,17 @@ export function CaptureBooth({
 
   if (step === "qr" && resultUrl) {
     return (
-      <main className="flex min-h-full flex-col items-center justify-center px-6 py-12 text-center">
+      <main className="flex min-h-full flex-col items-center justify-center px-4 py-12 text-center sm:px-6">
         <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
-        <h1 className="mt-4 text-3xl font-light tracking-[0.18em] uppercase">Scan for your portraits</h1>
+        <h1 className="page-title mt-4">Scan for your portraits</h1>
         <p className="mt-3 max-w-md text-muted">
           Point your phone camera at this code. The page will show your portraits when they’re ready.
         </p>
-        <div className="mt-8">
-          <QrCodeImage value={resultUrl} size={280} alt="Portrait download link" />
+        <div className="mt-8 w-[min(280px,70vw)]">
+          <QrCodeImage value={resultUrl} size={280} alt="Portrait download link" className="h-auto w-full" />
         </div>
         <p className="mt-4 max-w-sm break-all text-xs text-muted">{resultUrl}</p>
-        <button type="button" className="booth-button mt-10" onClick={nextGuest}>
+        <button type="button" className="booth-button mt-10 w-full max-w-xs" onClick={nextGuest}>
           Done
         </button>
       </main>
@@ -493,14 +495,14 @@ export function CaptureBooth({
   }
 
   return (
-    <main className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-center">
+    <main className="flex min-h-full flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
       <p className="text-xs tracking-[0.28em] uppercase text-accent">{APP_NAME}</p>
-      <h1 className="mt-6 text-4xl font-light tracking-[0.18em] uppercase">Thank you</h1>
+      <h1 className="page-title mt-6">Thank you</h1>
       <p className="mt-4 max-w-xl text-muted">
         We’re creating your portrait. This takes about a minute. We’ll email and/or text a private
         link when it’s ready. You can step away.
       </p>
-      <button type="button" className="booth-button mt-10" onClick={nextGuest}>
+      <button type="button" className="booth-button mt-10 w-full max-w-xs" onClick={nextGuest}>
         Done
       </button>
     </main>

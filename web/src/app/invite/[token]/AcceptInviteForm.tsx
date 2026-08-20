@@ -103,7 +103,7 @@ export function AcceptInviteForm({ token }: { token: string }) {
         />
       </label>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      <button type="submit" className="booth-button" disabled={busy}>
+      <button type="submit" className="booth-button w-full" disabled={busy}>
         {busy ? "Activating…" : "Set password and continue"}
       </button>
     </form>

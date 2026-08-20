@@ -35,9 +35,9 @@ export function KioskUnlockForm({
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-16 text-center">
+    <main className="mx-auto flex min-h-full max-w-md flex-col justify-center px-4 py-16 text-center sm:px-6">
       <p className="text-xs tracking-[0.28em] uppercase text-accent">Kiosk locked</p>
-      <h1 className="mt-3 text-3xl font-light tracking-[0.12em] uppercase">Operator access</h1>
+      <h1 className="page-title mt-3">Operator access</h1>
       <p className="mt-3 text-sm text-muted">
         This iPad is in kiosk mode. Enter the operator password to open admin, or return to the booth.
       </p>
