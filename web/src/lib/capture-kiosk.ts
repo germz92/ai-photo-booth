@@ -12,6 +12,7 @@ export type CaptureKioskState = {
   enabled: boolean;
   slug: string;
   pinSet: boolean;
+  pin: string;
   version: number;
 };
 
@@ -23,6 +24,7 @@ type CaptureDoc = {
   externalKioskEnabled?: unknown;
   externalKioskSlug?: unknown;
   externalKioskPinHash?: unknown;
+  externalKioskPin?: unknown;
   externalKioskVersion?: unknown;
 };
 
@@ -46,10 +48,13 @@ function cookieSecret() {
 function parseState(doc: CaptureDoc | null | undefined): CaptureKioskState & { pinHash: string } {
   const slug = typeof doc?.externalKioskSlug === "string" ? doc.externalKioskSlug.trim() : "";
   const pinHash = typeof doc?.externalKioskPinHash === "string" ? doc.externalKioskPinHash : "";
+  const storedPin = typeof doc?.externalKioskPin === "string" ? doc.externalKioskPin.trim() : "";
+  const pin = CAPTURE_PIN_PATTERN.test(storedPin) ? storedPin : "";
   return {
     enabled: doc?.externalKioskEnabled === true,
     slug,
     pinSet: Boolean(pinHash),
+    pin,
     version: Math.max(0, asInt(doc?.externalKioskVersion, 0)),
     pinHash,
   };
@@ -60,10 +65,11 @@ export function captureKioskUrl(slug: string) {
   return slug ? `${origin}/c/${encodeURIComponent(slug)}` : "";
 }
 
-export function publicCaptureKiosk(state: CaptureKioskState) {
+export function publicCaptureKiosk(state: CaptureKioskState, options?: { includePin?: boolean }) {
   return {
     enabled: state.enabled,
     pinSet: state.pinSet,
+    pin: options?.includePin && state.pin ? state.pin : null,
     slug: state.slug || null,
     path: state.slug ? `/c/${state.slug}` : null,
     url: state.enabled && state.slug ? captureKioskUrl(state.slug) : null,
@@ -119,6 +125,7 @@ export async function saveEventCaptureKiosk(
     enabled?: boolean;
     slug?: string;
     pinHash?: string;
+    pin?: string;
     version?: number;
   },
 ) {
@@ -126,6 +133,7 @@ export async function saveEventCaptureKiosk(
   if (typeof fields.enabled === "boolean") extras.externalKioskEnabled = fields.enabled;
   if (typeof fields.slug === "string") extras.externalKioskSlug = fields.slug;
   if (typeof fields.pinHash === "string") extras.externalKioskPinHash = fields.pinHash;
+  if (typeof fields.pin === "string") extras.externalKioskPin = fields.pin;
   if (typeof fields.version === "number") extras.externalKioskVersion = fields.version;
   if (Object.keys(extras).length > 0) {
     await setDocumentFields("Event", eventId, extras);

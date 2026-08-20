@@ -18,7 +18,7 @@ export async function GET(
   const access = await requireOwnedEvent(id);
   if (!access.ok) return access.response;
   const state = await getEventCaptureKiosk(id);
-  return Response.json({ capture: publicCaptureKiosk(state) });
+  return Response.json({ capture: publicCaptureKiosk(state, { includePin: true }) });
 }
 
 export async function PATCH(
@@ -38,6 +38,7 @@ export async function PATCH(
   let enabled = current.enabled;
   let slug = current.slug;
   let pinHash = current.pinHash;
+  let pin = current.pin;
   let version = current.version;
 
   if (typeof body.pin === "string" && body.pin.trim()) {
@@ -46,6 +47,7 @@ export async function PATCH(
       return Response.json({ error: parsed.error }, { status: 400 });
     }
     pinHash = await hashCapturePin(parsed.pin);
+    pin = parsed.pin;
     version += 1;
   }
 
@@ -66,6 +68,6 @@ export async function PATCH(
     }
   }
 
-  const saved = await saveEventCaptureKiosk(id, { enabled, slug, pinHash, version });
-  return Response.json({ capture: publicCaptureKiosk(saved) });
+  const saved = await saveEventCaptureKiosk(id, { enabled, slug, pinHash, pin, version });
+  return Response.json({ capture: publicCaptureKiosk(saved, { includePin: true }) });
 }

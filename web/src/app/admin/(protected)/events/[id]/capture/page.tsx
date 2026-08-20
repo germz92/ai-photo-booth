@@ -1,17 +1,10 @@
-import { getEventCaptureKiosk, publicCaptureKiosk } from "@/lib/capture-kiosk";
-import { CaptureSettings } from "../CaptureSettings";
-import { loadAdminEvent } from "../load-event";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function CaptureSettingsPage({
+export default async function CaptureSettingsRedirect({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const event = await loadAdminEvent(id);
-  const capture = publicCaptureKiosk(await getEventCaptureKiosk(event.id));
-
-  return <CaptureSettings eventId={event.id} eventName={event.name} initial={capture} />;
+  redirect(`/admin/events/${id}/settings`);
 }

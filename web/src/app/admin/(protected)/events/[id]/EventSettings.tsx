@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 type Theme = {
@@ -14,7 +14,7 @@ type Theme = {
   active: boolean;
 };
 
-type SettingsEvent = {
+export type SettingsEvent = {
   id: string;
   name: string;
   eventDate: string;
@@ -43,7 +43,15 @@ function withLooks(theme: Theme): Theme {
   };
 }
 
-export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent }) {
+export function EventSettings({
+  initialEvent,
+  section = "all",
+  afterIdentity,
+}: {
+  initialEvent: SettingsEvent;
+  section?: "all" | "event" | "themes";
+  afterIdentity?: ReactNode;
+}) {
   const router = useRouter();
   const [event, setEvent] = useState({
     ...initialEvent,
@@ -228,8 +236,12 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
     await reload();
   }
 
+  const showEvent = section === "all" || section === "event";
+  const showThemes = section === "all" || section === "themes";
+
   return (
     <div className="grid gap-8">
+      {showEvent ? (
       <form className="grid gap-4 md:grid-cols-3" onSubmit={(form) => void saveEvent(form)}>
         <label className="grid gap-1 text-sm md:col-span-1">
           Name
@@ -253,24 +265,7 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
             <option value="archived">archived</option>
           </select>
         </label>
-        <div className="grid gap-2 md:col-span-3">
-          <p className="booth-label">Portraits per capture</p>
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4].map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={`kiosk-theme-btn min-w-16 ${batch === value ? "selected" : ""}`}
-                onClick={() => setBatch(value)}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-          <p className="text-sm text-muted">
-            Each guest capture generates this many portraits. 1 is fastest; 4 takes longer on the GPU.
-          </p>
-        </div>
+        {afterIdentity ? <div className="md:col-span-3">{afterIdentity}</div> : null}
         <div className="grid gap-2 md:col-span-3">
           <p className="booth-label">Image upload</p>
           <div className="flex flex-wrap gap-2">
@@ -293,11 +288,31 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
             When enabled, guests can upload a photo instead of using the kiosk camera.
           </p>
         </div>
+        <div className="grid gap-2 md:col-span-3">
+          <p className="booth-label">Generations per capture</p>
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4].map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={`kiosk-theme-btn min-w-16 ${batch === value ? "selected" : ""}`}
+                onClick={() => setBatch(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-muted">
+            Each guest capture generates this many portraits. 1 is fastest; 4 takes longer on the GPU.
+          </p>
+        </div>
         <button type="submit" className="booth-button justify-self-start" disabled={busy}>
           Save event
         </button>
       </form>
+      ) : null}
 
+      {showThemes ? (
       <section className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -382,8 +397,9 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
           </div>
         )}
       </section>
+      ) : null}
 
-      {themeModal ? (
+      {showThemes && themeModal ? (
         <div className="lightbox" onClick={() => setThemeModal(null)} role="presentation">
           <form
             className="settings-modal"
@@ -487,7 +503,7 @@ export function EventSettings({ initialEvent }: { initialEvent: SettingsEvent })
         </div>
       ) : null}
 
-      {error && !themeModal ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {error && !(showThemes && themeModal) ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
     </div>
   );
 }

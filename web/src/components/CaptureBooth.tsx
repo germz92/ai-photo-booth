@@ -14,6 +14,26 @@ const CAPTURE_WIDTH = 832;
 const CAPTURE_HEIGHT = 1216;
 const CAPTURE_ASPECT = CAPTURE_WIDTH / CAPTURE_HEIGHT;
 
+function LookIcon({ id }: { id: LookId }) {
+  if (id === "feminine") {
+    return (
+      <svg viewBox="0 0 32 48" width="36" height="52" aria-hidden="true" fill="currentColor">
+        <circle cx="16" cy="6" r="5" />
+        <path d="M10 14h12l6 16h-5l3 14h-5l-3-10h-4l-3 10h-5l3-14H4l6-16Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 32 48" width="36" height="52" aria-hidden="true" fill="currentColor">
+      <circle cx="16" cy="6" r="5" />
+      <rect x="4" y="14" width="24" height="5" rx="1" />
+      <rect x="11" y="14" width="10" height="16" />
+      <rect x="11" y="30" width="4" height="14" />
+      <rect x="17" y="30" width="4" height="14" />
+    </svg>
+  );
+}
+
 function coverCrop(srcW: number, srcH: number) {
   const srcAspect = srcW / Math.max(srcH, 1);
   if (srcAspect > CAPTURE_ASPECT) {
@@ -62,6 +82,7 @@ export function CaptureBooth({
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const unlockTaps = useRef({ count: 0, timer: 0 });
   const [step, setStep] = useState<Step>("camera");
   const [themeId, setThemeId] = useState(themes.length === 1 ? themes[0].id : "");
   const [look, setLook] = useState<LookId | "">("");
@@ -174,9 +195,18 @@ export function CaptureBooth({
     setStep("camera");
   }
 
-  function exitKiosk() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    window.location.href = `/admin/events/${eventId}`;
+  function secretUnlockTap() {
+    if (shared) return;
+    window.clearTimeout(unlockTaps.current.timer);
+    unlockTaps.current.count += 1;
+    if (unlockTaps.current.count >= 5) {
+      unlockTaps.current.count = 0;
+      window.location.href = "/kiosk-lock";
+      return;
+    }
+    unlockTaps.current.timer = window.setTimeout(() => {
+      unlockTaps.current.count = 0;
+    }, 2000);
   }
 
   async function onUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -284,7 +314,12 @@ export function CaptureBooth({
                 </>
               ) : (
                 <>
-                  <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
+                  <p
+                    className={`text-xs tracking-[0.28em] uppercase text-accent${shared ? "" : " pointer-events-auto"}`}
+                    onClick={shared ? undefined : secretUnlockTap}
+                  >
+                    {eventName || APP_NAME}
+                  </p>
                   <h1 className="mt-1 text-xl font-light tracking-[0.2em] text-white uppercase">Look at the camera</h1>
                 </>
               )}
@@ -311,11 +346,6 @@ export function CaptureBooth({
                     </button>
                   </>
                 ) : null}
-                {shared ? null : (
-                  <button type="button" className="text-xs text-muted underline" onClick={exitKiosk}>
-                    Exit kiosk
-                  </button>
-                )}
               </div>
             ) : null}
           </div>
@@ -381,13 +411,15 @@ export function CaptureBooth({
                     <button
                       key={option.id}
                       type="button"
-                      className={`kiosk-theme-btn ${look === option.id ? "selected" : ""}`}
+                      className={`kiosk-look-btn ${look === option.id ? "selected" : ""}`}
+                      aria-label={option.label}
                       onClick={() => {
                         setLook(option.id);
                         setError("");
                       }}
                     >
-                      {option.label}
+                      <LookIcon id={option.id} />
+                      <span>{option.label}</span>
                     </button>
                   ))}
                 </div>
@@ -454,7 +486,7 @@ export function CaptureBooth({
         </div>
         <p className="mt-4 max-w-sm break-all text-xs text-muted">{resultUrl}</p>
         <button type="button" className="booth-button mt-10" onClick={nextGuest}>
-          {shared ? "Submit another" : "Next guest"}
+          Done
         </button>
       </main>
     );
@@ -469,7 +501,7 @@ export function CaptureBooth({
         link when it’s ready. You can step away.
       </p>
       <button type="button" className="booth-button mt-10" onClick={nextGuest}>
-        {shared ? "Submit another" : "Next guest"}
+        Done
       </button>
     </main>
   );

@@ -545,6 +545,13 @@ export async function listLedger(userId: string, limit = 50) {
   }));
 }
 
+export async function verifyAccountPassword(userId: string, password: string) {
+  const doc = await findUserDocById(userId);
+  const passwordHash = typeof doc?.passwordHash === "string" ? doc.passwordHash : "";
+  if (!userId || !password || !passwordHash) return false;
+  return bcrypt.compare(password, passwordHash);
+}
+
 export function creditErrorResponse(error: unknown) {
   if (error instanceof CreditError) {
     return Response.json({ error: error.message, code: error.code }, { status: error.statusCode });

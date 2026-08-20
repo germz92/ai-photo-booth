@@ -1,4 +1,5 @@
 import { EventNav } from "./EventNav";
+import { EventSettingsLink } from "./EventSettingsLink";
 import { loadAdminEvent } from "./load-event";
 
 export default async function EventLayout({
@@ -17,7 +18,10 @@ export default async function EventLayout({
         <a href="/admin" className="text-sm text-muted underline">
           All events
         </a>
-        <h1 className="mt-3 text-3xl font-light tracking-[0.12em] uppercase">{event.name}</h1>
+        <div className="mt-3 flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-light tracking-[0.12em] uppercase">{event.name}</h1>
+          <EventSettingsLink eventId={event.id} />
+        </div>
       </div>
       <EventNav eventId={event.id} jobCount={event._count.jobs} status={event.status} />
       {children}

@@ -94,18 +94,6 @@ export function MediaLightbox({
 
   return (
     <div className="lightbox" style={zIndex ? { zIndex } : undefined} onClick={onClose} role="presentation">
-      <div className="lightbox-toolbar" onClick={(event) => event.stopPropagation()}>
-        <p className="lightbox-caption">
-          {current.label}
-          {canNav ? ` · ${index + 1} / ${items.length}` : ""}
-        </p>
-        <button type="button" className="booth-button min-h-10 px-4 text-xs" disabled={downloading} onClick={() => void download()}>
-          {downloading ? "Saving…" : "Download"}
-        </button>
-        <button type="button" className="booth-button-secondary min-h-10 px-4 text-xs" onClick={onClose}>
-          Close
-        </button>
-      </div>
       <div className="lightbox-stage" onClick={(event) => event.stopPropagation()} role="dialog" aria-label={current.label}>
         {canNav ? (
           <button type="button" className="lightbox-nav prev" aria-label="Previous image" onClick={() => go(-1)}>
@@ -119,6 +107,18 @@ export function MediaLightbox({
             ›
           </button>
         ) : null}
+      </div>
+      <div className="lightbox-toolbar" onClick={(event) => event.stopPropagation()}>
+        <p className="lightbox-caption">
+          {current.label}
+          {canNav ? ` · ${index + 1} / ${items.length}` : ""}
+        </p>
+        <button type="button" className="booth-button min-h-10 px-4 text-xs" disabled={downloading} onClick={() => void download()}>
+          {downloading ? "Saving…" : "Download"}
+        </button>
+        <button type="button" className="booth-button-secondary min-h-10 px-4 text-xs" onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );

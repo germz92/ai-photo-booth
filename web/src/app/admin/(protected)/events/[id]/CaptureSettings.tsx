@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 
-type CaptureState = {
+export type CaptureState = {
   enabled: boolean;
   pinSet: boolean;
+  pin: string | null;
   slug: string | null;
   path: string | null;
   url: string | null;
@@ -19,10 +20,12 @@ export function CaptureSettings({
   eventId,
   eventName,
   initial,
+  compact = false,
 }: {
   eventId: string;
   eventName: string;
   initial: CaptureState;
+  compact?: boolean;
 }) {
   const [capture, setCapture] = useState(initial);
   const [pin, setPin] = useState("");
@@ -30,6 +33,8 @@ export function CaptureSettings({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
 
   const link = shareUrl(capture.path, capture.url);
 
@@ -47,11 +52,23 @@ export function CaptureSettings({
       if (!response.ok || !json.capture) throw new Error(json.error || "Could not save capture settings");
       setCapture(json.capture);
       setPin("");
+      setShowPin(false);
       setNotice(okMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save capture settings");
     } finally {
       setBusy("");
+    }
+  }
+
+  async function copyPin() {
+    if (!capture.pin) return;
+    try {
+      await navigator.clipboard.writeText(capture.pin);
+      setCopiedPin(true);
+      window.setTimeout(() => setCopiedPin(false), 1600);
+    } catch {
+      setError("Could not copy the PIN");
     }
   }
 
@@ -67,7 +84,8 @@ export function CaptureSettings({
   }
 
   return (
-    <div className="grid max-w-2xl gap-8">
+    <div className={`grid gap-6 ${compact ? "" : "max-w-2xl gap-8"}`}>
+      {compact ? null : (
       <div>
         <h2 className="text-xl font-light tracking-[0.08em] uppercase">Capture settings</h2>
         <p className="mt-2 text-sm text-muted">
@@ -75,8 +93,9 @@ export function CaptureSettings({
           upload photos into this event. Submissions use your account credits.
         </p>
       </div>
+      )}
 
-      <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6">
+      <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6 md:col-span-3">
         <p className="booth-label">Shared kiosk</p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -112,9 +131,30 @@ export function CaptureSettings({
       </section>
 
       <section className="grid gap-3 rounded border border-white/10 bg-[var(--panel)] p-6">
-        <p className="booth-label">{capture.pinSet ? "Change PIN" : "Set PIN"}</p>
+        <p className="booth-label">PIN</p>
+        {capture.pin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="booth-input max-w-xs tracking-[0.3em]">
+              {showPin ? capture.pin : "•".repeat(capture.pin.length)}
+            </p>
+            <button
+              type="button"
+              className="booth-button-secondary min-h-10 px-4 text-xs"
+              onClick={() => setShowPin((current) => !current)}
+            >
+              {showPin ? "Hide" : "Show"}
+            </button>
+            <button type="button" className="booth-button-secondary min-h-10 px-4 text-xs" onClick={() => void copyPin()}>
+              {copiedPin ? "Copied" : "Copy PIN"}
+            </button>
+          </div>
+        ) : capture.pinSet ? (
+          <p className="text-sm text-muted">PIN is set. Save it again below to show it here.</p>
+        ) : (
+          <p className="text-sm text-muted">Set a 4 to 8 digit PIN for the shared kiosk.</p>
+        )}
         <label className="grid gap-2">
-          <span className="text-sm text-muted">4 to 8 digits. Share this separately from the link.</span>
+          <span className="text-sm text-muted">{capture.pinSet ? "Change PIN" : "New PIN"}</span>
           <input
             className="booth-input max-w-xs tracking-[0.3em]"
             inputMode="numeric"
@@ -123,6 +163,11 @@ export function CaptureSettings({
             maxLength={8}
             value={pin}
             onChange={(change) => setPin(change.target.value.replace(/\D/g, "").slice(0, 8))}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              if (pin.length >= 4) void save({ pin }, "PIN saved");
+            }}
             placeholder={capture.pinSet ? "••••" : "1234"}
           />
         </label>

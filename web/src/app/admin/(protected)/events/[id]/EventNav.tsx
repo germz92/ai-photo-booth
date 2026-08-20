@@ -13,9 +13,6 @@ export function EventNav({
 }) {
   const pathname = usePathname();
   const queue = `/admin/events/${eventId}`;
-  const settings = `${queue}/settings`;
-  const capture = `${queue}/capture`;
-  const branding = `${queue}/branding`;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -23,15 +20,6 @@ export function EventNav({
         <a href={queue} className={pathname === queue ? "active" : ""}>
           Queue
           <span className="ml-2 text-xs opacity-70">{jobCount}</span>
-        </a>
-        <a href={settings} className={pathname === settings ? "active" : ""}>
-          Settings
-        </a>
-        <a href={capture} className={pathname === capture ? "active" : ""}>
-          Capture settings
-        </a>
-        <a href={branding} className={pathname === branding ? "active" : ""}>
-          Branding
         </a>
       </div>
       <div className="flex flex-wrap items-center gap-2">
