@@ -111,30 +111,43 @@ export async function eventAllowsUpload(id: string) {
   return branding.allowUpload;
 }
 
+export async function findAdminUserDoc(filter: Record<string, unknown>) {
+  const result = await runMongoCommand<{
+    cursor?: { firstBatch?: Array<Record<string, unknown> & { email?: string; passwordHash?: string }> };
+  }>({
+    find: "AdminUser",
+    filter,
+    limit: 1,
+  });
+  return result.cursor?.firstBatch?.[0] ?? null;
+}
+
+export async function countAdminUsers() {
+  const result = await runMongoCommand<{ n?: number }>({
+    count: "AdminUser",
+    query: {},
+  });
+  return Number(result.n) || 0;
+}
+
 const ADMIN_DATE_FIELDS = ["lastLoginAt", "inviteExpiresAt", "resetExpiresAt"] as const;
 
 export async function repairAdminUserDateFields() {
-  const result = await runMongoCommand<{ cursor?: { firstBatch?: Array<Record<string, unknown>> } }>({
-    find: "AdminUser",
-    filter: {},
-    projection: {
-      lastLoginAt: 1,
-      inviteExpiresAt: 1,
-      resetExpiresAt: 1,
-    },
-  });
-  for (const doc of result.cursor?.firstBatch || []) {
-    const id = oidValue(doc._id);
-    if (!id) continue;
-    const patch: Record<string, unknown> = {};
-    for (const field of ADMIN_DATE_FIELDS) {
-      const value = doc[field];
-      if (typeof value !== "string") continue;
-      const date = new Date(value);
-      if (!Number.isNaN(date.getTime())) patch[field] = date;
-    }
-    if (Object.keys(patch).length) {
-      await setDocumentFields("AdminUser", id, patch);
-    }
+  for (const field of ADMIN_DATE_FIELDS) {
+    await runMongoCommand({
+      update: "AdminUser",
+      updates: [
+        {
+          q: { [field]: { $type: "string" } },
+          u: [{ $set: { [field]: { $toDate: `$${field}` } } }],
+          multi: true,
+        },
+        {
+          q: { [`${field}.$date`]: { $type: "string" } },
+          u: [{ $set: { [field]: { $toDate: `$${field}.$date` } } }],
+          multi: true,
+        },
+      ],
+    });
   }
 }

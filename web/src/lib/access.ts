@@ -1,10 +1,19 @@
 import { requireAdmin, unauthorized } from "@/lib/admin";
 import { getUserAccount } from "@/lib/users";
-import { getDocument, oidValue, prisma, setDocumentFields } from "@/lib/prisma";
+import { getDocument, oidValue, prisma, runMongoCommand, setDocumentFields } from "@/lib/prisma";
 
 export async function claimUnownedEvents(userId: string) {
-  const first = await prisma.adminUser.findFirst({ orderBy: { createdAt: "asc" } });
-  if (!first || first.id !== userId) return;
+  const result = await runMongoCommand<{
+    cursor?: { firstBatch?: Array<{ _id?: unknown }> };
+  }>({
+    find: "AdminUser",
+    filter: {},
+    sort: { createdAt: 1 },
+    limit: 1,
+    projection: { _id: 1 },
+  });
+  const firstId = oidValue(result.cursor?.firstBatch?.[0]?._id);
+  if (!firstId || firstId !== userId) return;
   await prisma.$runCommandRaw({
     update: "Event",
     updates: [

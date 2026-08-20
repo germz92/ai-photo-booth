@@ -15,30 +15,33 @@ function cleanUrl(value?: string | null) {
   return String(value || "").trim().replace(/\/$/, "");
 }
 
-/** Public origin for links, webhooks, and Auth.js. Never localhost in production. */
-export function publicAppUrl() {
-  const candidates = [
-    process.env.APP_URL,
-    process.env.AUTH_URL,
-    process.env.RENDER_EXTERNAL_URL,
-  ];
-  const production = process.env.NODE_ENV === "production";
-  for (const candidate of candidates) {
-    const url = cleanUrl(candidate);
-    if (!url) continue;
-    if (production && isLocalHostUrl(url)) continue;
-    return url;
-  }
-  return production ? "" : "http://localhost:3000";
+function isProduction() {
+  return process.env.NODE_ENV === "production";
 }
 
-export function applyProductionAuthUrl() {
-  if (process.env.NODE_ENV !== "production") return;
+/** Public origin for links, webhooks, and Auth.js. Local stays local; production never uses localhost. */
+export function publicAppUrl() {
+  if (!isProduction()) {
+    const local = cleanUrl(process.env.APP_URL);
+    if (local && isLocalHostUrl(local)) return local;
+    return "http://localhost:3000";
+  }
+
+  const candidates = [process.env.APP_URL, process.env.AUTH_URL, process.env.RENDER_EXTERNAL_URL];
+  for (const candidate of candidates) {
+    const url = cleanUrl(candidate);
+    if (!url || isLocalHostUrl(url)) continue;
+    return url;
+  }
+  return "";
+}
+
+export function applyAuthUrlForEnvironment() {
   const url = publicAppUrl();
-  if (!url || isLocalHostUrl(url)) return;
+  if (!url) return;
   process.env.AUTH_URL = url;
   process.env.NEXTAUTH_URL = url;
-  if (!process.env.APP_URL || isLocalHostUrl(process.env.APP_URL)) {
+  if (isProduction() && (!process.env.APP_URL || isLocalHostUrl(process.env.APP_URL))) {
     process.env.APP_URL = url;
   }
 }

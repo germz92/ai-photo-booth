@@ -3,7 +3,7 @@ import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { APP_EMAIL_FROM, APP_NAME } from "./brand";
 import { appUrl } from "./runpod";
-import { getDocument, mongoDate, oidValue, prisma, setDocumentFields } from "./prisma";
+import { findAdminUserDoc, getDocument, mongoDate, oidValue, prisma, setDocumentFields } from "./prisma";
 import type { CreditReason, PublicUser, UserRole, UserStatus } from "./user-types";
 
 export type { CreditReason, LedgerEntry, PublicUser, UserRole, UserStatus } from "./user-types";
@@ -357,7 +357,7 @@ export async function inviteUser(input: {
   const credits = Math.max(0, Math.trunc(Number(input.credits) || 0));
   if (!email) throw new CreditError("Email is required", 400);
 
-  const existing = await prisma.adminUser.findUnique({ where: { email } });
+  const existing = await findAdminUserDoc({ email });
   if (existing) throw new CreditError("A user with that email already exists", 400);
 
   const { token, tokenHash } = createInviteToken();
@@ -483,11 +483,8 @@ export async function acceptInvite(rawToken: string, password: string, name?: st
   const account = await lookupInvite(rawToken);
   if (!account) throw new CreditError("Invalid or expired invite", 400);
   const nextName = String(name || "").trim() || account.name;
-  await prisma.adminUser.update({
-    where: { id: account.id },
-    data: { passwordHash: await bcrypt.hash(password, 12) },
-  });
   await setDocumentFields("AdminUser", account.id, {
+    passwordHash: await bcrypt.hash(password, 12),
     name: nextName,
     status: "active",
     inviteTokenHash: "",
@@ -516,11 +513,8 @@ export async function acceptPasswordReset(rawToken: string, password: string) {
   }
   const account = await lookupReset(rawToken);
   if (!account) throw new CreditError("Invalid or expired reset link", 400);
-  await prisma.adminUser.update({
-    where: { id: account.id },
-    data: { passwordHash: await bcrypt.hash(password, 12) },
-  });
   await setDocumentFields("AdminUser", account.id, {
+    passwordHash: await bcrypt.hash(password, 12),
     resetTokenHash: "",
     resetExpiresAt: null,
   });

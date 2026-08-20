@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { prisma, repairAdminUserDateFields } from "./prisma";
+import { countAdminUsers, findAdminUserDoc, oidValue, prisma, repairAdminUserDateFields } from "./prisma";
 import { normalizeEmail, promoteToSuperadmin } from "./users";
 
 function duringProductionBuild() {
@@ -15,14 +15,14 @@ export async function ensureBootstrapAdmin() {
 
   await repairAdminUserDateFields();
 
-  const existing = await prisma.adminUser.findUnique({ where: { email } });
-  if (existing) {
-    await promoteToSuperadmin(existing.id, { grantCreditsIfMissing: true });
+  const existing = await findAdminUserDoc({ email });
+  const existingId = oidValue(existing?._id);
+  if (existingId) {
+    await promoteToSuperadmin(existingId, { grantCreditsIfMissing: true });
     return;
   }
 
-  const count = await prisma.adminUser.count();
-  if (count > 0) return;
+  if ((await countAdminUsers()) > 0) return;
 
   const created = await prisma.adminUser.create({
     data: {

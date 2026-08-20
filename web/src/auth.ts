@@ -1,12 +1,12 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
 import { ensureBootstrapAdmin } from "@/lib/auth-bootstrap";
-import { applyProductionAuthUrl, isLocalHostUrl } from "@/lib/public-url";
+import { findAdminUserDoc, oidValue } from "@/lib/prisma";
+import { applyAuthUrlForEnvironment, isLocalHostUrl } from "@/lib/public-url";
 import { loadUserAccount, markLogin } from "@/lib/users";
 
-applyProductionAuthUrl();
+applyAuthUrlForEnvironment();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -20,22 +20,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        await ensureBootstrapAdmin();
+        try {
+          await ensureBootstrapAdmin();
+        } catch (error) {
+          console.error("Admin bootstrap failed", error);
+        }
         const email = String(credentials?.email || "")
           .trim()
           .toLowerCase();
         const password = String(credentials?.password || "");
         if (!email || !password) return null;
 
-        const user = await prisma.adminUser.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null;
-        const ok = await bcrypt.compare(password, user.passwordHash);
+        const doc = await findAdminUserDoc({ email });
+        const passwordHash = typeof doc?.passwordHash === "string" ? doc.passwordHash : "";
+        const id = oidValue(doc?._id);
+        if (!doc || !id || !passwordHash) return null;
+        const ok = await bcrypt.compare(password, passwordHash);
         if (!ok) return null;
 
-        const account = await loadUserAccount(user.id);
+        const account = await loadUserAccount(id);
         if (!account || account.status !== "active") return null;
-        await markLogin(user.id);
-        return { id: user.id, email: user.email, role: account.role };
+        await markLogin(id);
+        return { id, email: account.email, role: account.role };
       },
     }),
   ],
@@ -62,7 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const next = new URL(url);
         const base = new URL(baseUrl);
         if (next.origin === base.origin) return url;
-        if (isLocalHostUrl(url)) {
+        if (isLocalHostUrl(url) && !isLocalHostUrl(baseUrl)) {
           return `${base.origin}${next.pathname}${next.search}`;
         }
       } catch {
