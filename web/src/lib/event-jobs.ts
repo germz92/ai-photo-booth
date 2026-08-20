@@ -1,4 +1,4 @@
-import { prisma } from "./prisma";
+import { prisma, runMongoCommand } from "./prisma";
 import { toQueueJob, type QueueJob } from "@/app/admin/(protected)/events/[id]/queue";
 
 export const JOB_PAGE_SIZE = 24;
@@ -95,10 +95,10 @@ async function jobFilter(eventId: string, options: { q?: string; status?: JobLis
 }
 
 async function countJobs(query: Record<string, unknown>) {
-  const result = (await prisma.$runCommandRaw({
+  const result = await runMongoCommand<{ n?: number }>({
     count: "Job",
     query,
-  })) as { n?: number };
+  });
   return Number(result.n) || 0;
 }
 
@@ -125,13 +125,13 @@ export async function listEventJobs(
   const matchedFilter = await jobFilter(eventId, { q: options.q, status: options.status });
   const matched = await countJobs(matchedFilter);
 
-  const found = (await prisma.$runCommandRaw({
+  const found = await runMongoCommand<{ cursor?: { firstBatch?: Array<{ _id?: unknown }> } }>({
     find: "Job",
     filter,
     sort: { createdAt: -1, _id: -1 },
     limit: limit + 1,
     projection: { _id: 1 },
-  })) as { cursor?: { firstBatch?: Array<{ _id?: unknown }> } };
+  });
 
   const ids = (found.cursor?.firstBatch || []).map((row) => oidValue(row._id)).filter(Boolean);
   const hasMore = ids.length > limit;

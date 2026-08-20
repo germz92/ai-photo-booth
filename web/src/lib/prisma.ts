@@ -21,12 +21,16 @@ export function oidValue(value: unknown) {
   return "";
 }
 
+export async function runMongoCommand<T = Record<string, unknown>>(command: object) {
+  return prisma.$runCommandRaw(command as never) as Promise<T>;
+}
+
 export async function setDocumentFields(
   collection: string,
   id: string,
   fields: Record<string, unknown>,
 ) {
-  await prisma.$runCommandRaw({
+  await runMongoCommand({
     update: collection,
     updates: [
       {
@@ -41,11 +45,11 @@ export async function getDocument<T extends Record<string, unknown>>(
   collection: string,
   id: string,
 ) {
-  const result = (await prisma.$runCommandRaw({
+  const result = await runMongoCommand<{ cursor?: { firstBatch?: T[] } }>({
     find: collection,
     filter: { _id: { $oid: id } },
     limit: 1,
-  })) as { cursor?: { firstBatch?: T[] } };
+  });
   return result.cursor?.firstBatch?.[0] ?? null;
 }
 

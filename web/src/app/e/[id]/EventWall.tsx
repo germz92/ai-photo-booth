@@ -12,6 +12,13 @@ type GridFit = {
 
 const PORTRAIT_RATIO = 832 / 1216;
 
+type Portrait = {
+  id: string;
+  themeTitle: string;
+  createdAt: string;
+  src: string;
+};
+
 function fitPortraitGrid(width: number, height: number): GridFit {
   const gap = Math.max(8, Math.round(Math.min(width, height) * 0.01));
   const landscape = width >= height;
