@@ -177,6 +177,40 @@ export function EventBranding({
     }
   }
 
+  async function downloadComp() {
+    if (!hasSample || !previewLogo) {
+      setError("Upload a sample photo and overlay logo first.");
+      return;
+    }
+    setBusy("comp");
+    setError("");
+    try {
+      const params = new URLSearchParams({
+        scale: String(scale),
+        x: String(overlayX),
+        y: String(overlayY),
+      });
+      const response = await fetch(`/api/admin/events/${eventId}/overlay-comp?${params}`);
+      if (!response.ok) {
+        const json = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error || "Could not download the overlay comp");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "overlay-comp.jpg";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not download the overlay comp");
+    } finally {
+      setBusy("");
+    }
+  }
+
   return (
     <form className="grid gap-10" onSubmit={(form) => void save(form)}>
       <section className="grid gap-4">
@@ -337,6 +371,14 @@ export function EventBranding({
                 Remove sample
               </button>
             ) : null}
+            <button
+              type="button"
+              className="booth-button min-h-10 px-3 text-xs"
+              disabled={Boolean(busy) || !hasSample || !previewLogo}
+              onClick={() => void downloadComp()}
+            >
+              {busy === "comp" ? "Compositing…" : "Download overlay comp"}
+            </button>
           </div>
         </div>
 
