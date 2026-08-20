@@ -57,9 +57,13 @@ export async function getDocument<T extends Record<string, unknown>>(
   collection: string,
   id: string,
 ) {
+  const filter =
+    /^[a-f0-9]{24}$/i.test(id)
+      ? { $or: [{ _id: { $oid: id } }, { _id: id }] }
+      : { _id: id };
   const result = await runMongoCommand<{ cursor?: { firstBatch?: T[] } }>({
     find: collection,
-    filter: { _id: { $oid: id } },
+    filter,
     limit: 1,
   });
   return result.cursor?.firstBatch?.[0] ?? null;

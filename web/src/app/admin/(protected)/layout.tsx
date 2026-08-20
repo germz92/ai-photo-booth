@@ -18,7 +18,6 @@ export default async function AdminProtectedLayout({
   }
   const account = await getUserAccount(session.user.id);
   if (!account || account.status !== "active") {
-    await signOut({ redirectTo: "/admin/login" });
     redirect("/admin/login");
   }
 

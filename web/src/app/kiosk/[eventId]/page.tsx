@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import { CaptureBooth } from "@/components/CaptureBooth";
 import { userOwnsEvent } from "@/lib/access";
 import { eventAllowsUpload, prisma } from "@/lib/prisma";
@@ -19,7 +19,6 @@ export default async function KioskPage({
   }
   const account = await getUserAccount(session.user.id);
   if (!account || account.status !== "active") {
-    await signOut({ redirectTo: "/admin/login" });
     redirect("/admin/login");
   }
   if (!(await userOwnsEvent(session.user.id, eventId))) notFound();
