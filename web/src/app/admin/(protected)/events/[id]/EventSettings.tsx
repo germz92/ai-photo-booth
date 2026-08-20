@@ -237,6 +237,24 @@ export function EventSettings({
     await reload();
   }
 
+  async function setThemeActive(id: string, active: boolean) {
+    setBusy(true);
+    setError("");
+    const response = await fetch(`/api/admin/themes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active }),
+    });
+    const json = (await response.json()) as { error?: string };
+    setBusy(false);
+    if (!response.ok) {
+      setError(json.error || (active ? "Could not reactivate theme" : "Could not deactivate theme"));
+      return;
+    }
+    setThemeModal(null);
+    await reload();
+  }
+
   const showEvent = section === "all" || section === "event";
   const showThemes = section === "all" || section === "themes";
 
@@ -527,12 +545,26 @@ export function EventSettings({
               <button type="submit" className="booth-button min-h-10 px-4 text-xs" disabled={busy}>
                 {themeModal.mode === "add" ? "Add theme" : "Save theme"}
               </button>
+              {themeModal.mode === "edit" && !themeModal.theme.active ? (
+                <button
+                  type="button"
+                  className="booth-button-secondary min-h-10 px-4 text-xs"
+                  disabled={busy}
+                  onClick={() => void setThemeActive(themeModal.theme.id, true)}
+                >
+                  Reactivate
+                </button>
+              ) : null}
               {themeModal.mode === "edit" ? (
                 <button
                   type="button"
                   className="booth-button-secondary min-h-10 px-3 text-xs"
                   disabled={busy}
-                  onClick={() => void removeTheme(themeModal.theme.id)}
+                  onClick={() =>
+                    themeModal.theme.active
+                      ? void setThemeActive(themeModal.theme.id, false)
+                      : void removeTheme(themeModal.theme.id)
+                  }
                 >
                   {themeModal.theme.active ? "Deactivate" : "Remove"}
                 </button>

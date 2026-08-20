@@ -84,7 +84,7 @@ export async function optimizeQwenPrompt(input: {
     prompt ? `Current prompt:\n${prompt}` : "Current prompt is empty. Write a full Qwen edit prompt from the theme notes.",
   ];
   if (hint) userParts.push(`Theme title / notes: ${hint}`);
-  if (adaptLook) {
+  if (look && adaptLook) {
     userParts.push(LOOK_ADAPT[look]);
   } else if (gendered && look) {
     userParts.push(`The source prompt already implies a ${look} look. Keep that direction.`);

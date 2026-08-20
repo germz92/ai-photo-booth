@@ -21,7 +21,7 @@ function isoDate(value: Date | string | undefined) {
 }
 
 export function mediaVersion(value: Date | string | number | undefined) {
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
   if (!value) return "";
   const time = typeof value === "string" ? Date.parse(value) : value.getTime();
   return Number.isFinite(time) ? String(time) : "";
