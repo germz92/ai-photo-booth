@@ -1,6 +1,6 @@
 import { unauthorized } from "@/lib/admin";
 import { listOwnedEventIds, requireUser, setEventOwner } from "@/lib/access";
-import { prisma } from "@/lib/prisma";
+import { prisma, setDocumentFields } from "@/lib/prisma";
 import { clampBatch } from "@/lib/workflow";
 
 export const runtime = "nodejs";
@@ -42,5 +42,6 @@ export async function POST(request: Request) {
     data: { name, eventDate, status, batch },
   });
   await setEventOwner(event.id, session.user.id);
+  await setDocumentFields("Event", event.id, { allowUpload: false });
   return Response.json({ event });
 }

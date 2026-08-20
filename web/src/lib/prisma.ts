@@ -94,7 +94,7 @@ export async function getEventBranding(id: string) {
     padding: doc?.overlayPadding,
   });
   return {
-    allowUpload: doc?.allowUpload !== false,
+    allowUpload: doc?.allowUpload === true,
     wallTitle: typeof doc?.wallTitle === "string" ? doc.wallTitle.trim() : "",
     wallLogoKey,
     showWallTitle: doc?.showWallTitle !== false,

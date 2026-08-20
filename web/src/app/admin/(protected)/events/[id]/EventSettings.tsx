@@ -31,7 +31,7 @@ function dateValue(value: string) {
 }
 
 function allowsUpload(value: boolean | undefined) {
-  return value !== false;
+  return value === true;
 }
 
 function withLooks(theme: Theme): Theme {

@@ -48,12 +48,16 @@ export function CaptureBooth({
   allowUpload,
   themes,
   credits: initialCredits,
+  mode = "operator",
+  jobsPath = "/api/jobs",
 }: {
   eventId: string;
   eventName: string;
   allowUpload: boolean;
   themes: LiveTheme[];
   credits: number;
+  mode?: "operator" | "shared";
+  jobsPath?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +74,10 @@ export function CaptureBooth({
   const [cameraReady, setCameraReady] = useState(false);
   const [resultUrl, setResultUrl] = useState("");
   const [credits, setCredits] = useState(initialCredits);
+  const shared = mode === "shared";
+  const noCreditsMessage = shared
+    ? "This event isn't accepting photos right now."
+    : "Insufficient credits";
 
   const startCamera = useCallback(async () => {
     try {
@@ -136,7 +144,7 @@ export function CaptureBooth({
 
   function startCountdown() {
     if (credits < 1) {
-      setError("Insufficient credits");
+      setError(noCreditsMessage);
       return;
     }
     if (!cameraReady) {
@@ -204,7 +212,7 @@ export function CaptureBooth({
     event?.preventDefault();
     if (!photo || !eventId) return;
     if (credits < 1) {
-      setError("Insufficient credits");
+      setError(noCreditsMessage);
       return;
     }
     if (!themeId) {
@@ -232,7 +240,7 @@ export function CaptureBooth({
       form.append("themeId", themeId);
       if (look) form.append("look", look);
       if (viaQr) form.append("skipContact", "1");
-      const response = await fetch("/api/jobs", { method: "POST", body: form });
+      const response = await fetch(jobsPath, { method: "POST", body: form });
       const json = (await response.json()) as { error?: string; resultUrl?: string };
       if (!response.ok) throw new Error(json.error || "Could not submit");
       setCredits((current) => Math.max(0, current - 1));
@@ -303,9 +311,11 @@ export function CaptureBooth({
                     </button>
                   </>
                 ) : null}
-                <button type="button" className="text-xs text-muted underline" onClick={exitKiosk}>
-                  Exit kiosk
-                </button>
+                {shared ? null : (
+                  <button type="button" className="text-xs text-muted underline" onClick={exitKiosk}>
+                    Exit kiosk
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
@@ -444,7 +454,7 @@ export function CaptureBooth({
         </div>
         <p className="mt-4 max-w-sm break-all text-xs text-muted">{resultUrl}</p>
         <button type="button" className="booth-button mt-10" onClick={nextGuest}>
-          Next guest
+          {shared ? "Submit another" : "Next guest"}
         </button>
       </main>
     );
@@ -459,7 +469,7 @@ export function CaptureBooth({
         link when it’s ready. You can step away.
       </p>
       <button type="button" className="booth-button mt-10" onClick={nextGuest}>
-        Next guest
+        {shared ? "Submit another" : "Next guest"}
       </button>
     </main>
   );

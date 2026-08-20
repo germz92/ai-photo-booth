@@ -14,6 +14,7 @@ export function EventNav({
   const pathname = usePathname();
   const queue = `/admin/events/${eventId}`;
   const settings = `${queue}/settings`;
+  const capture = `${queue}/capture`;
   const branding = `${queue}/branding`;
 
   return (
@@ -25,6 +26,9 @@ export function EventNav({
         </a>
         <a href={settings} className={pathname === settings ? "active" : ""}>
           Settings
+        </a>
+        <a href={capture} className={pathname === capture ? "active" : ""}>
+          Capture settings
         </a>
         <a href={branding} className={pathname === branding ? "active" : ""}>
           Branding

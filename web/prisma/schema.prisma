@@ -50,7 +50,7 @@ model Event {
   eventDate     DateTime
   status        String    @default("draft")
   batch         Int       @default(1)
-  allowUpload   Boolean   @default(true)
+  allowUpload   Boolean   @default(false)
   wallTitle     String    @default("")
   wallLogoKey   String    @default("")
   showWallTitle     Boolean  @default(true)
