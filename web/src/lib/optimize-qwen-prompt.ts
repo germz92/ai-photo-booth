@@ -9,6 +9,7 @@ Rules:
 - Front-load identity lock: preserve recognizable face, hairstyle, skin tone, body build, proportions, and general pose. Subject stays facing the camera.
 - Then one clear scene/theme, then wardrobe, then lighting/atmosphere, then quality finish.
 - Be specific and visual (framing, clothing, smoke/light color, where effects sit in the frame).
+- Wardrobe must match the crop. If the portrait is half-body / waist-up, only name garments that would show in that frame. Never mention boots, shoes, heels, skirts, gown hems, or a head-to-toe outfit unless the source asked for full body. Naming unseen clothes makes Qwen pull out to a full-body shot.
 - Keep it photorealistic commercial event portrait, not illustration, anime, or costume-play unless the user asked for that.
 - Do not mention LoRAs, samplers, CFG, steps, ComfyUI, or negative prompts.
 - Do not add artist names, camera EXIF, or a long keyword dump.
@@ -23,6 +24,27 @@ Gender:
 const GENDER_PATTERN =
   /\b(men|man|women|woman|male|female|masculine|feminine|boy|girl|gentleman|lady|ladies|guys|his|her|hers|him|he|she|gender(?:ed)?|non[- ]?binary|trans(?:gender)?)\b/i;
 
+function isFullBodyFraming(text: string) {
+  return /\b(full[- ]?body|head[- ]?to[- ]?toe|entire (?:body|figure)|full[- ]?length)\b/i.test(text);
+}
+
+function isHalfBodyFraming(text: string) {
+  return /\b(half[- ]?body|waist[- ]?up|from the (?:waist|hips)|hips? up|chest[- ]?up|upper body)\b/i.test(text);
+}
+
+function framingLock(source: string) {
+  if (isFullBodyFraming(source) && !isHalfBodyFraming(source)) {
+    return `Framing lock:
+- The source is full body. You may describe a complete outfit including shoes if the source already named them.
+- Keep full-body framing. Do not crop to a bust portrait.`;
+  }
+  return `Framing lock (do not break this):
+- This is a half-body portrait, framed from the waist or hips up. Repeat that crop in the first paragraph.
+- Only name garments that would be visible in that crop: jacket, shirt, blouse, collar, neckline, tie, hat, hair, a belt at the waist.
+- Do not mention boots, shoes, heels, socks, skirts, gown length, midi/maxi hems, or a complete head-to-toe outfit. Those words force a full-body generation.
+- Do not "complete" the outfit below the frame. Unseen clothes stay unnamed.`;
+}
+
 const LOOK_ADAPT: Record<"masculine" | "feminine", string> = {
   masculine: `Rewrite this as a masculine look for Qwen Image Edit.
 
@@ -32,14 +54,15 @@ Scene lock (do not break this):
 - If the source is a cinematic/studio portrait, keep it that. Genre words like western, noir, or royal describe wardrobe and mood, not a new landscape.
 
 Required:
-- First sentence must be: "Transform the person in the input image into a man..." then continue with the SAME framing and the SAME scene as the source.
+- First sentence must be: "Transform the person in the input image into a man..." then continue with the SAME half-body or source framing and the SAME scene.
 - Use he / him / his throughout. Never use they, she, woman, or feminine.
 - Keep his recognizable facial features, skin tone, and general pose. Present him as a man.
-- Wardrobe must stay in the source genre and formality. Only gender the garments. If the source is western, keep western wear (shirt, jacket, trousers, hat as already implied). Do not restyle into a tuxedo or corporate suit unless the source was already formal/corporate.
-- For generic event themes with no genre wardrobe, map formality:
-  - formal / black-tie → tuxedo or dark tailored suit, dress shirt, tie or bow tie
-  - corporate / event-ready → tailored men's suit or blazer, dress shirt, trousers, optional tie
-  - smart casual → men's jacket or overshirt, collared shirt or knit, tailored trousers
+- Wardrobe must stay in the source genre and formality, and only garments visible in the crop. If the source is western and half-body, keep a western shirt, jacket, and hat. Do not add trousers, boots, or a full outfit.
+- Do not restyle into a tuxedo or corporate suit unless the source was already formal/corporate.
+- For generic event themes with no genre wardrobe, map formality using visible garments only:
+  - formal / black-tie → dark tailored jacket, dress shirt, tie or bow tie
+  - corporate / event-ready → blazer or suit jacket, dress shirt, optional tie
+  - smart casual → jacket or overshirt, collared shirt or knit
 - Name real garments. Do not say "masculine attire" or "gendered styling".
 - Hair should read as a natural men's finish while still resembling the subject.`,
   feminine: `Rewrite this as a feminine look for Qwen Image Edit.
@@ -50,14 +73,15 @@ Scene lock (do not break this):
 - If the source is a cinematic/studio portrait, keep it that. Genre words like western, noir, or royal describe wardrobe and mood, not a new landscape.
 
 Required:
-- First sentence must be: "Transform the person in the input image into a woman..." then continue with the SAME framing and the SAME scene as the source.
+- First sentence must be: "Transform the person in the input image into a woman..." then continue with the SAME half-body or source framing and the SAME scene.
 - Use she / her / hers throughout. Never use they, he, man, or masculine.
 - Keep her recognizable facial features, skin tone, and general pose. Present her as a woman.
-- Wardrobe must stay in the source genre and formality. Only gender the garments. If the source is western, keep western wear (shirt, jacket, skirt or trousers, hat as already implied). Do not restyle into an evening gown unless the source was already formal/black-tie.
-- For generic event themes with no genre wardrobe, map formality:
-  - formal / black-tie → evening gown or tailored formal dress, refined heels if visible
-  - corporate / event-ready → tailored dress, or blouse with a blazer and trousers or a pencil skirt
-  - smart casual → blouse or knit, tailored trousers or midi skirt, women's jacket
+- Wardrobe must stay in the source genre and formality, and only garments visible in the crop. If the source is western and half-body, keep a western shirt, jacket, and hat. Do not add a skirt, boots, heels, or a full outfit.
+- Do not restyle into an evening gown unless the source was already formal/black-tie AND full body.
+- For generic event themes with no genre wardrobe, map formality using visible garments only:
+  - formal / black-tie → tailored bodice or blouse with a refined neckline, optional blazer
+  - corporate / event-ready → blouse with a blazer
+  - smart casual → blouse or knit, women's jacket
 - Name real garments. Do not say "feminine attire" or "gendered styling".
 - Hair should read as a natural women's finish while still resembling the subject.`,
 };
@@ -91,6 +115,7 @@ export async function optimizeQwenPrompt(input: {
     prompt ? `Current prompt:\n${prompt}` : "Current prompt is empty. Write a full Qwen edit prompt from the theme notes.",
   ];
   if (hint) userParts.push(`Theme title / notes: ${hint}`);
+  userParts.push(framingLock(`${prompt}\n${hint}`));
   if (look && adaptLook) {
     userParts.push(LOOK_ADAPT[look]);
   } else if (gendered && look) {
