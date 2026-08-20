@@ -44,6 +44,22 @@ export default async function ResultPage({
       <p className="text-xs tracking-[0.28em] uppercase text-accent">{APP_NAME}</p>
       <h1 className="page-title mt-4">Your portrait</h1>
       <p className="mt-2 text-muted">Save your image{keys.length > 1 ? "s" : ""}. The link expires in 48 hours.</p>
+      <p className="mt-3 flex items-start gap-2 text-sm text-white sm:items-center">
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          className="mt-0.5 shrink-0 text-accent sm:mt-0"
+        >
+          <rect x="7" y="2" width="10" height="20" rx="2" />
+          <circle cx="12" cy="18" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+        <span>On a phone, press and hold the photo, then tap Save Image.</span>
+      </p>
       <div className={`mt-8 grid gap-4 ${keys.length > 1 ? "sm:grid-cols-2" : ""}`}>
         {keys.map((_, index) => {
           const src = `/api/r/${token}/image?i=${index}&v=${job.updatedAt.getTime()}`;
@@ -54,6 +70,22 @@ export default async function ResultPage({
               <a className="booth-button m-4 w-[calc(100%-2rem)]" href={src} download={`portrait-${index + 1}.png`}>
                 Download {keys.length > 1 ? index + 1 : ""}
               </a>
+              <p className="mb-4 flex items-center justify-center gap-2 px-4 text-center text-xs text-muted sm:hidden">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  aria-hidden="true"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  className="shrink-0 text-accent"
+                >
+                  <rect x="7" y="2" width="10" height="20" rx="2" />
+                  <circle cx="12" cy="18" r="0.8" fill="currentColor" stroke="none" />
+                </svg>
+                Press and hold the photo, then tap Save Image.
+              </p>
             </div>
           );
         })}

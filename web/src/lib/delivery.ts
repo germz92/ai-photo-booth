@@ -37,6 +37,7 @@ async function sendEmail(to: string, link: string) {
     html: `
       <p>Your AI portrait is ready.</p>
       <p><a href="${link}">View and download your photo</a></p>
+      <p>On a phone, press and hold the photo, then tap Save Image.</p>
       <p>This link expires in 48 hours.</p>
     `,
   });
