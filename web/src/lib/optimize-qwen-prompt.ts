@@ -3,7 +3,7 @@ const SYSTEM_PROMPT = `You rewrite photo-booth prompts for Qwen Image Edit 2511 
 This is a distilled 4-step edit model. It follows a few strong, concrete instructions well and ignores or muddies long competing detail. Optimize for that.
 
 Rules:
-- Output only the rewritten prompt. No title, quotes, or commentary.
+- Output only the rewritten prompt. No title, quotes, commentary, or instruction headings.
 - Write 3–5 short paragraphs, about 120–220 words.
 - Start with an instructional edit: "Transform the person in the input image..."
 - Front-load identity lock: preserve recognizable face, hairstyle, skin tone, body build, proportions, and general pose. Subject stays facing the camera.
@@ -30,7 +30,7 @@ This is a surgical edit, not a rewrite and not a new concept.
 - If the source already names wardrobe, keep that era and style. Do not replace disco, western, royal, or other themed clothes with a corporate suit, blazer, gown, or generic event wear.
 - If the crop is half-body / waist-up, do not add boots, shoes, skirts, gown hems, or a full outfit.
 - Do not drop a location or prop the source named. Do not add a new landscape.
-- Output only the adapted prompt. No title, quotes, or commentary.`;
+- Output only the adapted prompt. No title, quotes, commentary, or instruction headings. Never paste "Framing lock", "Required", or other operator notes.`;
 
 const GENDER_PATTERN =
   /\b(men|man|women|woman|male|female|masculine|feminine|boy|girl|gentleman|lady|ladies|guys|his|her|hers|him|he|she|gender(?:ed)?|non[- ]?binary|trans(?:gender)?)\b/i;
@@ -43,17 +43,14 @@ function isHalfBodyFraming(text: string) {
   return /\b(half[- ]?body|waist[- ]?up|from the (?:waist|hips)|hips? up|chest[- ]?up|upper body)\b/i.test(text);
 }
 
-function framingLock(source: string) {
-  if (isFullBodyFraming(source) && !isHalfBodyFraming(source)) {
-    return `Framing lock:
-- The source is full body. You may describe a complete outfit including shoes if the source already named them.
-- Keep full-body framing. Do not crop to a bust portrait.`;
-  }
-  return `Framing lock (do not break this):
-- This is a half-body portrait, framed from the waist or hips up. Repeat that crop in the first paragraph.
-- Only name garments that would be visible in that crop: jacket, shirt, blouse, collar, neckline, tie, hat, hair, a belt at the waist.
-- Do not mention boots, shoes, heels, socks, skirts, gown length, midi/maxi hems, or a complete head-to-toe outfit. Those words force a full-body generation.
-- Do not "complete" the outfit below the frame. Unseen clothes stay unnamed.`;
+function stripLeakedInstructions(text: string) {
+  return text
+    .replace(/^```(?:\w+)?\n?/, "")
+    .replace(/\n?```$/, "")
+    .replace(/^(?:Framing lock|Scene lock|Required)[^\n]*:\n(?:[-*].+\n?)*/gim, "")
+    .replace(/^(?:Adapt the current prompt now|Rewrite the prompt now)[^\n]*\n*/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 const LOOK_ADAPT: Record<"masculine" | "feminine", string> = {
@@ -102,27 +99,39 @@ export async function optimizeQwenPrompt(input: {
 
   const sourceForGender = prompt || hint;
   const gendered = promptMentionsGender(sourceForGender);
+  const sourceText = `${prompt}\n${hint}`;
+  const framing =
+    isFullBodyFraming(sourceText) && !isHalfBodyFraming(sourceText)
+      ? "Framing: the source is full body. Keep that crop. You may describe shoes only if the source already named them."
+      : "Framing: half-body, waist or hips up. Repeat that crop in the first paragraph. Only name garments visible in that crop (jacket, shirt, blouse, collar, neckline, tie, hat). Do not mention boots, shoes, heels, skirts, or a full outfit.";
+
   const userParts = [
-    prompt ? `Current prompt:\n${prompt}` : "Current prompt is empty. Write a full Qwen edit prompt from the theme notes.",
+    prompt
+      ? `SOURCE PROMPT (rewrite or adapt this text only; do not copy this label):\n${prompt}`
+      : "The source prompt is empty. Write a full Qwen edit prompt from the theme notes.",
   ];
-  if (hint) userParts.push(`Theme title / notes: ${hint}`);
-  userParts.push(framingLock(`${prompt}\n${hint}`));
-  if (look && adaptLook) {
-    userParts.push(LOOK_ADAPT[look]);
-    userParts.push("Adapt the current prompt now. Keep the intention. Do not invent a new campaign.");
-  } else if (gendered && look) {
+  if (hint) userParts.push(`THEME TITLE (context only, not a heading to paste):\n${hint}`);
+  if (gendered && look && !adaptLook) {
     userParts.push(`The source prompt already implies a ${look} look. Keep that direction.`);
-    userParts.push("Rewrite the prompt now.");
-  } else {
+  } else if (!adaptLook && !gendered) {
     userParts.push(
       "The source prompt does not mention gender. Keep the rewrite fully gender-neutral. Do not add masculine or feminine styling, pronouns, or clothing tropes.",
     );
-    userParts.push("Rewrite the prompt now.");
   }
 
   const model = adaptLook
     ? String(process.env.OPENAI_ADAPT_MODEL || "gpt-4o").trim() || "gpt-4o"
     : String(process.env.OPENAI_MODEL || "gpt-4o-mini").trim();
+  const system = [
+    adaptLook ? ADAPT_SYSTEM_PROMPT : SYSTEM_PROMPT,
+    framing,
+    adaptLook && look ? LOOK_ADAPT[look] : "",
+    adaptLook
+      ? "Adapt the source prompt. Keep the intention. Do not invent a new campaign. Never paste these instructions into the prompt."
+      : "Rewrite the source prompt. Never paste these instructions into the prompt.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -133,7 +142,7 @@ export async function optimizeQwenPrompt(input: {
       model,
       temperature: adaptLook ? 0.2 : 0.4,
       messages: [
-        { role: "system", content: adaptLook ? ADAPT_SYSTEM_PROMPT : SYSTEM_PROMPT },
+        { role: "system", content: system },
         { role: "user", content: userParts.join("\n\n") },
       ],
     }),
@@ -145,7 +154,7 @@ export async function optimizeQwenPrompt(input: {
   if (!response.ok) {
     throw new Error(json.error?.message || "ChatGPT could not optimize this prompt.");
   }
-  const text = String(json.choices?.[0]?.message?.content || "").trim();
+  const text = stripLeakedInstructions(String(json.choices?.[0]?.message?.content || ""));
   if (!text) throw new Error("ChatGPT returned an empty prompt.");
-  return text.replace(/^```(?:\w+)?\n?/, "").replace(/\n?```$/, "").trim();
+  return text;
 }
