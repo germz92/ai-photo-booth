@@ -156,10 +156,10 @@ export async function findLiveCaptureKiosk(slug: string): Promise<LiveCaptureKio
   if (!state.enabled || !state.slug || !state.pinHash) return null;
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { id: true, name: true, status: true, userId: true },
+    select: { id: true, name: true, status: true },
   });
   if (!event || event.status === "archived") return null;
-  const ownerId = oidValue(doc?.userId) || event.userId || "";
+  const ownerId = oidValue(doc?.userId);
   if (!ownerId) return null;
   return {
     eventId: event.id,
