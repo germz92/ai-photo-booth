@@ -4,7 +4,7 @@ import { completeMockJob, pollRunpodUntilDone, resultExpiry } from "./jobs";
 import { prisma } from "./prisma";
 import { submitRunpodJob } from "./runpod";
 import { putObject } from "./storage";
-import { loadThemeLooks } from "./theme-looks-db";
+import { loadThemeLooks, resolveJobKreaPrompt } from "./theme-looks-db";
 import { isLookId, resolveThemePrompt } from "./theme-looks";
 import { originalThumbKey, saveThumb } from "./thumbs";
 import { creditErrorResponse, CreditError, withGenerationCredit } from "./users";
@@ -64,6 +64,13 @@ export async function submitBoothJob(options: {
   if (!prompt) {
     return Response.json({ error: "Theme is not configured" }, { status: 400 });
   }
+  const kreaPrompt = await resolveJobKreaPrompt({
+    themeId: theme.id,
+    themePrompt: theme.prompt,
+    looks,
+    qwenPrompt: prompt,
+    look: options.look,
+  });
 
   const bytes = Buffer.from(await options.photo.arrayBuffer());
   const imageBase64 = bytes.toString("base64");
@@ -76,6 +83,7 @@ export async function submitBoothJob(options: {
         submitRunpodJob({
           imageBase64,
           qwenPrompt: prompt,
+          kreaPrompt,
           batch,
         }),
         putObject(originalKey, bytes, options.photo.type || "image/jpeg"),

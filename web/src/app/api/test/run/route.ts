@@ -1,6 +1,7 @@
 import { requireAdmin, unauthorized } from "@/lib/admin";
+import { kreaRefinePromptFromQwen } from "@/lib/krea-refine-prompt";
 import { submitRunpodJob } from "@/lib/runpod";
-import { clampBatch } from "@/lib/workflow";
+import { clampBatch, defaultKreaPrompt } from "@/lib/workflow";
 
 export const runtime = "nodejs";
 
@@ -25,11 +26,15 @@ export async function POST(request: Request) {
   const qwenPrompt = String(form.get("qwenPrompt") || "").trim();
   const batch = clampBatch(form.get("batch"));
   const bytes = Buffer.from(await photo.arrayBuffer());
+  const kreaPrompt = qwenPrompt
+    ? await kreaRefinePromptFromQwen(qwenPrompt, defaultKreaPrompt())
+    : undefined;
 
   try {
     const submitted = await submitRunpodJob({
       imageBase64: bytes.toString("base64"),
       qwenPrompt: qwenPrompt || undefined,
+      kreaPrompt,
       batch,
       forceLive: true,
       skipWebhook: true,

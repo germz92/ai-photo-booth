@@ -1,6 +1,6 @@
 import { requireOwnedEvent } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { attachThemeLooks, saveThemeLooks } from "@/lib/theme-looks-db";
+import { attachThemeLooks, lockThemeKreaPrompts, saveThemeLooks } from "@/lib/theme-looks-db";
 import { validateThemeLooksInput } from "@/lib/theme-looks";
 
 export const runtime = "nodejs";
@@ -43,6 +43,7 @@ export async function POST(
     },
   });
   await saveThemeLooks(theme.id, parsedLooks.looks);
+  await lockThemeKreaPrompts(theme.id, parsedLooks.looks, parsedLooks.prompt);
   const [withLooks] = await attachThemeLooks([theme]);
   return Response.json({ theme: withLooks });
 }

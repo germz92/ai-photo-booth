@@ -51,7 +51,7 @@
   },
   "203": {
     "inputs": {
-      "text": "Refine the supplied portrait into a premium photorealistic commercial event portrait while preserving the existing composition, pose, natural body proportions, physical build, wardrobe, props, environmental effects, and overall scene design established in the supplied image. Keep the subject’s silhouette and framing consistent with the supplied image.\n\nImprove facial realism, natural skin texture, sharp eyes, realistic hair detail, accurate hands and anatomy, fabric detail, lighting realism, dimensional rim lighting, atmospheric depth, and clean subject separation. Maintain corporate-appropriate styling and preserve the established visual theme of the image.\n\nHigh-end commercial portrait photography, polished editorial finish, cinematic lighting, realistic detail, natural anatomy, premium event activation aesthetic. Do not redesign the scene or significantly alter the subject’s pose, body shape, clothing, props, theme elements, or framing.",
+      "text": "Photoreal premium commercial event portrait, same pose, crop, silhouette, wardrobe, props, and scene. Natural skin texture, sharp eyes, realistic hair, accurate hands, detailed fabric, dimensional rim light, atmospheric depth, clean subject separation. High-end editorial photography, cinematic lighting, natural anatomy, polished advertising finish.",
       "clip": ["123", 0]
     },
     "class_type": "CLIPTextEncode",

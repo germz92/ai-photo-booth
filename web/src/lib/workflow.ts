@@ -53,11 +53,18 @@ export function defaultQwenPrompt(): string {
   return typeof prompt === "string" ? prompt : "";
 }
 
+export function defaultKreaPrompt(): string {
+  const workflow = loadBoothWorkflow();
+  const text = workflow["203"]?.inputs?.text;
+  return typeof text === "string" ? text : "";
+}
+
 export function buildRunpodWorkflow(options?: {
   imageName?: string;
   kreaSeed?: number;
   qwenSeed?: number;
   qwenPrompt?: string;
+  kreaPrompt?: string;
   batch?: number;
 }): { workflow: BoothWorkflow; kreaSeed: number; qwenSeed: number; imageName: string; batch: number } {
   const workflow = structuredClone(loadBoothWorkflow());
@@ -66,8 +73,8 @@ export function buildRunpodWorkflow(options?: {
   const qwenSeed = options?.qwenSeed ?? randomSeed();
   const batch = clampBatch(options?.batch);
 
-  if (!workflow["120"] || !workflow["247"] || !workflow["289"] || !workflow["284"] || !workflow["291"]) {
-    throw new Error("booth-api.json is missing injectable nodes 120/247/284/289/291");
+  if (!workflow["120"] || !workflow["203"] || !workflow["247"] || !workflow["289"] || !workflow["284"] || !workflow["291"]) {
+    throw new Error("booth-api.json is missing injectable nodes 120/203/247/284/289/291");
   }
 
   workflow["120"].inputs.image = imageName;
@@ -76,6 +83,9 @@ export function buildRunpodWorkflow(options?: {
   workflow["291"].inputs.amount = batch;
   if (typeof options?.qwenPrompt === "string" && options.qwenPrompt.trim()) {
     workflow["284"].inputs.prompt = options.qwenPrompt.trim();
+  }
+  if (typeof options?.kreaPrompt === "string" && options.kreaPrompt.trim()) {
+    workflow["203"].inputs.text = options.kreaPrompt.trim();
   }
 
   return { workflow, kreaSeed, qwenSeed, imageName, batch };

@@ -13,7 +13,7 @@ import {
   type RunpodWebhookPayload,
 } from "./runpod";
 import { getObject, putObject } from "./storage";
-import { loadThemeLooks } from "./theme-looks-db";
+import { loadThemeLooks, resolveJobKreaPrompt } from "./theme-looks-db";
 import { isLookId, resolveThemePrompt } from "./theme-looks";
 import { outputThumbKey, saveThumb } from "./thumbs";
 import { clampBatch } from "./workflow";
@@ -129,6 +129,14 @@ export async function regenerateJob(
   if (!prompt) {
     throw new Error(looks.splitLooks && !look ? "Please choose a look" : "Prompt is required");
   }
+  const kreaPrompt = await resolveJobKreaPrompt({
+    themeId,
+    themePrompt,
+    looks,
+    qwenPrompt: prompt,
+    look,
+    convertIfCustom: true,
+  });
   const batch = clampBatch(options?.batch ?? job.batch ?? job.event.batch, 1);
   const original = await getObject(job.originalKey);
 
@@ -147,6 +155,7 @@ export async function regenerateJob(
   const submitted = await submitRunpodJob({
     imageBase64: original.toString("base64"),
     qwenPrompt: prompt,
+    kreaPrompt,
     batch,
   });
 

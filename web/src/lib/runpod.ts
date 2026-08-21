@@ -52,6 +52,7 @@ export async function submitRunpodJob(options: {
   kreaSeed?: number;
   qwenSeed?: number;
   qwenPrompt?: string;
+  kreaPrompt?: string;
   batch?: number;
   forceLive?: boolean;
   skipWebhook?: boolean;
@@ -63,10 +64,14 @@ export async function submitRunpodJob(options: {
     workflow: BoothWorkflow;
   }
 > {
+  const qwenPrompt = options.qwenPrompt?.trim() || "";
+  const kreaPrompt = options.kreaPrompt?.trim() || undefined;
+
   const built = buildRunpodWorkflow({
     kreaSeed: options.kreaSeed,
     qwenSeed: options.qwenSeed,
-    qwenPrompt: options.qwenPrompt,
+    qwenPrompt: qwenPrompt || undefined,
+    kreaPrompt,
     batch: options.batch,
   });
 
