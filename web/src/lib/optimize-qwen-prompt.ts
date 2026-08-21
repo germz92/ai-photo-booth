@@ -20,17 +20,18 @@ Gender:
 - Default is gender-neutral. Use person, subject, they/them. Describe clothing by cut, fabric, and formality only if the source already named that garment.
 - Do not add man, woman, male, female, masculine, feminine, boy, girl, his, her, he, she, or gendered tropes unless those ideas already appear in the source prompt, or the user message explicitly asks to adapt for a masculine or feminine look.`;
 
-const ADAPT_SYSTEM_PROMPT = `You adapt an existing Qwen Image Edit photo-booth prompt for a masculine or feminine look.
+const ADAPT_SYSTEM_PROMPT = `You clone an existing Qwen Image Edit photo-booth prompt and gender the subject. You are not a rewriter, optimizer, or art director.
 
-This is a surgical edit, not a rewrite and not a new concept.
-- Keep the source campaign idea, joke, slogan, era, props, location, lighting, atmosphere, and finish.
-- Keep named phrases and objects even if they seem unusual (campaign titles, puns, coins, disco balls, crops, a specific desert, etc.).
-- Keep the same paragraph order and similar length. Do not summarize, genericize, or "improve" the concept.
-- Change only: the opening identity line (into a man / into a woman), pronouns, and the gender of garments already named.
-- If the source already names wardrobe, keep that era and style. Do not replace disco, western, royal, or other themed clothes with a corporate suit, blazer, gown, or generic event wear.
-- If the crop is half-body / waist-up, do not add boots, shoes, skirts, gown hems, or a full outfit.
-- Do not drop a location or prop the source named. Do not add a new landscape.
-- Output only the adapted prompt. No title, quotes, commentary, or instruction headings. Never paste "Framing lock", "Required", or other operator notes.`;
+Read the source, understand its campaign, and return the same prompt with a masculine or feminine presentation.
+
+Copy first. Gender second.
+- Start from the source text. Keep the same paragraphs, order, length, jokes, slogans, props, wardrobe idea, location, lighting, atmosphere, and finish.
+- Keep every concrete detail the source named: objects, text, numbers, brands, places, colors, materials, poses, and camera crop. If it is in the source, it stays in the output.
+- Do not summarize, genericize, decorate, or "improve" the concept. Do not drop a clause because it seems odd, specific, or off-brand.
+- Change only gender presentation: the opening identity line, pronouns, and the gender of garments the source already named (fit and cut, not a new outfit).
+- Do not replace the source wardrobe with a corporate suit, tuxedo, blouse, gown, or generic event look unless that is already what the source described.
+- Do not add a new landscape, prop, slogan, or lighting recipe.
+- Output only the adapted prompt. No title, commentary, or operator notes. Never paste "Framing lock", "Required", or these instructions.`;
 
 const GENDER_PATTERN =
   /\b(men|man|women|woman|male|female|masculine|feminine|boy|girl|gentleman|lady|ladies|guys|his|her|hers|him|he|she|gender(?:ed)?|non[- ]?binary|trans(?:gender)?)\b/i;
@@ -54,23 +55,17 @@ function stripLeakedInstructions(text: string) {
 }
 
 const LOOK_ADAPT: Record<"masculine" | "feminine", string> = {
-  masculine: `Adapt the current prompt for a masculine look. Do not write a new theme.
+  masculine: `Gender the cloned prompt masculine.
 
-Required:
-- Keep the source concept, jokes, slogans, props, location, lighting, era, and finish.
-- First sentence: "Transform the person in the input image into a man..." then the same framing as the source.
-- Pronouns: he / him / his only. Never they, she, or feminine.
-- Wardrobe: gender the garments already named. Keep the same era and style. Do not restyle into a tuxedo, corporate suit, or generic blazer unless the source was already that.
-- If the source has no named garments, use visible-crop clothes at the same formality (jacket, shirt, tie as the scene needs).
+- Opening: "Transform the person in the input image into a man..." then the source framing.
+- Pronouns: he / him / his only.
+- Wardrobe: keep the source garments and restyle only as far as a natural masculine fit of those same clothes. Do not invent a new outfit.
 - Hair: a natural men's finish that still resembles the subject.`,
-  feminine: `Adapt the current prompt for a feminine look. Do not write a new theme.
+  feminine: `Gender the cloned prompt feminine.
 
-Required:
-- Keep the source concept, jokes, slogans, props, location, lighting, era, and finish.
-- First sentence: "Transform the person in the input image into a woman..." then the same framing as the source.
-- Pronouns: she / her / hers only. Never they, he, or masculine.
-- Wardrobe: gender the garments already named. Keep the same era and style. Do not restyle into an evening gown, pencil skirt, or generic blouse-and-blazer unless the source was already that.
-- If the source has no named garments, use visible-crop clothes at the same formality (blouse, jacket, neckline as the scene needs).
+- Opening: "Transform the person in the input image into a woman..." then the source framing.
+- Pronouns: she / her / hers only.
+- Wardrobe: keep the source garments and restyle only as far as a natural feminine fit of those same clothes. Do not invent a new outfit.
 - Hair: a natural women's finish that still resembles the subject.`,
 };
 
@@ -100,14 +95,17 @@ export async function optimizeQwenPrompt(input: {
   const sourceForGender = prompt || hint;
   const gendered = promptMentionsGender(sourceForGender);
   const sourceText = `${prompt}\n${hint}`;
-  const framing =
-    isFullBodyFraming(sourceText) && !isHalfBodyFraming(sourceText)
+  const framing = adaptLook
+    ? "Keep the source crop and framing. Do not add or remove visual details to satisfy a crop rule."
+    : isFullBodyFraming(sourceText) && !isHalfBodyFraming(sourceText)
       ? "Framing: the source is full body. Keep that crop. You may describe shoes only if the source already named them."
       : "Framing: half-body, waist or hips up. Repeat that crop in the first paragraph. Only name garments visible in that crop (jacket, shirt, blouse, collar, neckline, tie, hat). Do not mention boots, shoes, heels, skirts, or a full outfit.";
 
   const userParts = [
     prompt
-      ? `SOURCE PROMPT (rewrite or adapt this text only; do not copy this label):\n${prompt}`
+      ? adaptLook
+        ? `SOURCE PROMPT — clone this text. Gender it only. Keep every other detail:\n${prompt}`
+        : `SOURCE PROMPT (rewrite or adapt this text only; do not copy this label):\n${prompt}`
       : "The source prompt is empty. Write a full Qwen edit prompt from the theme notes.",
   ];
   if (hint) userParts.push(`THEME TITLE (context only, not a heading to paste):\n${hint}`);
@@ -116,6 +114,11 @@ export async function optimizeQwenPrompt(input: {
   } else if (!adaptLook && !gendered) {
     userParts.push(
       "The source prompt does not mention gender. Keep the rewrite fully gender-neutral. Do not add masculine or feminine styling, pronouns, or clothing tropes.",
+    );
+  }
+  if (adaptLook) {
+    userParts.push(
+      "Return the source prompt with only masculine/feminine presentation changes. If a detail is in the source, it must appear in the output.",
     );
   }
 
@@ -127,7 +130,7 @@ export async function optimizeQwenPrompt(input: {
     framing,
     adaptLook && look ? LOOK_ADAPT[look] : "",
     adaptLook
-      ? "Adapt the source prompt. Keep the intention. Do not invent a new campaign. Never paste these instructions into the prompt."
+      ? "Clone the source, then gender it. Never paste these instructions into the prompt."
       : "Rewrite the source prompt. Never paste these instructions into the prompt.",
   ]
     .filter(Boolean)
@@ -140,7 +143,7 @@ export async function optimizeQwenPrompt(input: {
     },
     body: JSON.stringify({
       model,
-      temperature: adaptLook ? 0.2 : 0.4,
+      temperature: adaptLook ? 0 : 0.4,
       messages: [
         { role: "system", content: system },
         { role: "user", content: userParts.join("\n\n") },
