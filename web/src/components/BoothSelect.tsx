@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { menuContains, useAnchoredMenu } from "@/lib/anchored-menu";
 
 export type BoothSelectOption = {
   value: string;
@@ -26,27 +28,12 @@ export function BoothSelect({
 }) {
   const selected = options.find((item) => item.value === value);
   const [open, setOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const selectedRef = useRef<HTMLButtonElement>(null);
-
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const width = Math.min(rect.width, window.innerWidth - 24);
-    const maxHeight = Math.min(288, window.innerHeight * 0.42);
-    const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
-    const below = rect.bottom + 8;
-    const top = below + maxHeight > window.innerHeight - 12 ? Math.max(12, rect.top - 8 - maxHeight) : below;
-    setMenuStyle({ top, left, width, maxHeight });
-  }, [open]);
+  const { triggerRef, menuRef, style, update } = useAnchoredMenu(open);
 
   useEffect(() => {
     if (!open) return undefined;
-    selectedRef.current?.scrollIntoView({ block: "nearest" });
     const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!menuContains(triggerRef, menuRef, event.target)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -57,10 +44,37 @@ export function BoothSelect({
       document.removeEventListener("pointerdown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, menuRef, triggerRef]);
+
+  const menu =
+    open && typeof document !== "undefined"
+      ? createPortal(
+          <div className="booth-select-menu" role="listbox" aria-label={label || placeholder} ref={menuRef} style={style}>
+            {options.map((item) => {
+              const active = item.value === value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  className={`booth-select-option${active ? " selected" : ""}`}
+                  onClick={() => {
+                    onChange(item.value);
+                    setOpen(false);
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
-    <div className={`booth-select${className ? ` ${className}` : ""}`} ref={rootRef}>
+    <div className={`booth-select${className ? ` ${className}` : ""}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -69,33 +83,18 @@ export function BoothSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          update(options.length * 44 + 12);
+          setOpen(true);
+        }}
       >
         <span className={selected ? "" : "is-placeholder"}>{selected?.label || placeholder}</span>
       </button>
-      {open ? (
-        <div className="booth-select-menu" role="listbox" aria-label={label || placeholder} style={menuStyle}>
-          {options.map((item) => {
-            const active = item.value === value;
-            return (
-              <button
-                key={item.value}
-                ref={active ? selectedRef : undefined}
-                type="button"
-                role="option"
-                aria-selected={active}
-                className={`booth-select-option${active ? " selected" : ""}`}
-                onClick={() => {
-                  onChange(item.value);
-                  setOpen(false);
-                }}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      {menu}
     </div>
   );
 }
