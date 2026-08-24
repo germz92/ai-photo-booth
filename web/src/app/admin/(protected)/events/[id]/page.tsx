@@ -9,7 +9,13 @@ export default async function EventQueuePage({
 }) {
   const { id } = await params;
   const [event, listed] = await Promise.all([loadAdminEvent(id), listEventJobs(id)]);
-  const themesById = Object.fromEntries(event.themes.map((theme) => [theme.id, { title: theme.title }]));
+  const themes = event.themes.map((theme) => ({
+    id: theme.id,
+    title: theme.title,
+    splitLooks: Boolean(theme.splitLooks),
+    active: theme.active,
+  }));
+  const themesById = Object.fromEntries(themes.map((theme) => [theme.id, { title: theme.title }]));
 
   return (
     <SubmissionQueue
@@ -18,6 +24,7 @@ export default async function EventQueuePage({
       initialNextCursor={listed.nextCursor}
       initialCounts={listed.counts}
       themesById={themesById}
+      themes={themes}
     />
   );
 }

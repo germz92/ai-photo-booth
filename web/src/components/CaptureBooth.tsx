@@ -1,18 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { PhoneField } from "./PhoneField";
 import { QrCodeImage } from "./QrCodeImage";
 import { APP_NAME } from "@/lib/brand";
+import { imageToJpegDataUrl } from "@/lib/booth-photo";
 import { LOOK_OPTIONS, type LookId } from "@/lib/theme-looks";
 
-type Step = "camera" | "countdown" | "form" | "qr" | "done";
+type Step = "camera" | "countdown" | "review" | "form" | "contact" | "qr" | "done";
 
-type LiveTheme = { id: string; title: string; splitLooks?: boolean };
+const STEP_ORDER: Step[] = ["camera", "countdown", "review", "form", "contact", "qr", "done"];
 
-/** Flux Krea / booth portrait size. FluxKontextImageScale then maps this to 832x1248. */
-const CAPTURE_WIDTH = 832;
-const CAPTURE_HEIGHT = 1216;
-const CAPTURE_ASPECT = CAPTURE_WIDTH / CAPTURE_HEIGHT;
+type LiveTheme = {
+  id: string;
+  title: string;
+  splitLooks?: boolean;
+  hasPreview?: boolean;
+  hasMasculinePreview?: boolean;
+  hasFemininePreview?: boolean;
+  previewVersion?: string;
+};
+
+function kioskPreviewUrl(theme: LiveTheme, kind: "main" | "masculine" | "feminine") {
+  const version = theme.previewVersion ? `&v=${encodeURIComponent(theme.previewVersion)}` : "";
+  return `/api/t/${theme.id}/preview?kind=${kind}${version}`;
+}
+
+function themeThumbKind(theme: LiveTheme): "main" | "masculine" | "feminine" | "" {
+  if (theme.hasPreview) return "main";
+  if (theme.hasMasculinePreview) return "masculine";
+  if (theme.hasFemininePreview) return "feminine";
+  return "";
+}
 
 function LookIcon({ id }: { id: LookId }) {
   if (id === "feminine") {
@@ -32,34 +51,6 @@ function LookIcon({ id }: { id: LookId }) {
       <rect x="17" y="30" width="4" height="14" />
     </svg>
   );
-}
-
-function coverCrop(srcW: number, srcH: number) {
-  const srcAspect = srcW / Math.max(srcH, 1);
-  if (srcAspect > CAPTURE_ASPECT) {
-    const sw = srcH * CAPTURE_ASPECT;
-    return { sx: (srcW - sw) / 2, sy: 0, sw, sh: srcH };
-  }
-  const sh = srcW / CAPTURE_ASPECT;
-  return { sx: 0, sy: (srcH - sh) / 2, sw: srcW, sh };
-}
-
-function imageToJpegDataUrl(source: CanvasImageSource, width: number, height: number, mirror = false) {
-  if (width < 2 || height < 2) return null;
-  const { sx, sy, sw, sh } = coverCrop(width, height);
-  const canvas = document.createElement("canvas");
-  canvas.width = CAPTURE_WIDTH;
-  canvas.height = CAPTURE_HEIGHT;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  if (mirror) {
-    ctx.translate(CAPTURE_WIDTH, 0);
-    ctx.scale(-1, 1);
-  }
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, CAPTURE_WIDTH, CAPTURE_HEIGHT);
-  return canvas.toDataURL("image/jpeg", 0.92);
 }
 
 export function CaptureBooth({
@@ -86,8 +77,16 @@ export function CaptureBooth({
   const [step, setStep] = useState<Step>("camera");
   const [themeId, setThemeId] = useState(themes.length === 1 ? themes[0].id : "");
   const [look, setLook] = useState<LookId | "">("");
+  const [previewThemeId, setPreviewThemeId] = useState("");
+  const [previewLook, setPreviewLook] = useState<LookId | "">("");
+  const [pickedThemeId, setPickedThemeId] = useState("");
+  const [pickedLook, setPickedLook] = useState<LookId | "">("");
+  const pickTimer = useRef(0);
+  const shutterTimer = useRef(0);
+  const stepRef = useRef<Step>("camera");
   const [count, setCount] = useState(3);
   const [photo, setPhoto] = useState<string | null>(null);
+  const [guestName, setGuestName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
@@ -95,6 +94,11 @@ export function CaptureBooth({
   const [cameraReady, setCameraReady] = useState(false);
   const [resultUrl, setResultUrl] = useState("");
   const [credits, setCredits] = useState(initialCredits);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [shutter, setShutter] = useState(false);
+  const [pageDir, setPageDir] = useState<"forward" | "back">("forward");
+  stepRef.current = step;
+  const previewTheme = themes.find((theme) => theme.id === previewThemeId);
   const shared = mode === "shared";
   const noCreditsMessage = shared
     ? "This event isn't accepting photos right now."
@@ -137,6 +141,54 @@ export function CaptureBooth({
   const cameraLive = step === "camera" || step === "countdown";
 
   useEffect(() => {
+    return () => {
+      window.clearTimeout(pickTimer.current);
+      window.clearTimeout(shutterTimer.current);
+    };
+  }, []);
+
+  function goTo(next: Step) {
+    const from = STEP_ORDER.indexOf(stepRef.current);
+    const to = STEP_ORDER.indexOf(next);
+    setPageDir(to < from ? "back" : "forward");
+    setStep(next);
+  }
+
+  function pageClass(extra = "") {
+    return `kiosk-page${pageDir === "back" ? " is-back" : ""}${extra ? ` ${extra}` : ""}`;
+  }
+
+  useEffect(() => {
+    if (step !== "contact") {
+      setKeyboardOpen(false);
+      document.documentElement.style.removeProperty("--kiosk-keyboard");
+      return undefined;
+    }
+    const viewport = window.visualViewport;
+    const sync = () => {
+      const overlap = viewport
+        ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+        : 0;
+      document.documentElement.style.setProperty("--kiosk-keyboard", `${overlap}px`);
+      setKeyboardOpen(overlap > 80);
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && focused.closest(".kiosk-contact-form")) {
+        window.setTimeout(() => focused.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+      }
+    };
+    sync();
+    viewport?.addEventListener("resize", sync);
+    viewport?.addEventListener("scroll", sync);
+    window.addEventListener("focusin", sync);
+    return () => {
+      viewport?.removeEventListener("resize", sync);
+      viewport?.removeEventListener("scroll", sync);
+      window.removeEventListener("focusin", sync);
+      document.documentElement.style.removeProperty("--kiosk-keyboard");
+    };
+  }, [step]);
+
+  useEffect(() => {
     if (!cameraLive) return undefined;
     void startCamera();
     return () => {
@@ -154,7 +206,18 @@ export function CaptureBooth({
           const dataUrl = imageToJpegDataUrl(video, video.videoWidth, video.videoHeight, true);
           if (dataUrl) {
             setPhoto(dataUrl);
-            setStep("form");
+            setShutter(true);
+            try {
+              navigator.vibrate?.(20);
+            } catch {
+              /* ignore */
+            }
+            window.clearTimeout(shutterTimer.current);
+            shutterTimer.current = window.setTimeout(() => {
+              setShutter(false);
+              goTo("review");
+            }, 460);
+            return;
           }
         }
       }
@@ -173,6 +236,7 @@ export function CaptureBooth({
       return;
     }
     setCount(3);
+    setShutter(false);
     setStep("countdown");
   }
 
@@ -180,19 +244,73 @@ export function CaptureBooth({
     setPhoto(null);
     setThemeId(themes.length === 1 ? themes[0].id : "");
     setLook("");
+    setPreviewThemeId("");
+    setPreviewLook("");
+    setPickedThemeId("");
+    setPickedLook("");
     setError("");
-    setStep("camera");
+    setShutter(false);
+    goTo("camera");
   }
 
   function nextGuest() {
+    setGuestName("");
     setEmail("");
     setPhone("");
     setThemeId(themes.length === 1 ? themes[0].id : "");
     setLook("");
+    setPreviewThemeId("");
+    setPreviewLook("");
+    setPickedThemeId("");
+    setPickedLook("");
     setPhoto(null);
     setError("");
     setResultUrl("");
-    setStep("camera");
+    setShutter(false);
+    goTo("camera");
+  }
+
+  function goToContact(nextThemeId: string, nextLook: LookId | "") {
+    setThemeId(nextThemeId);
+    setLook(nextLook);
+    setPreviewThemeId("");
+    setPreviewLook("");
+    setPickedThemeId("");
+    setPickedLook("");
+    setError("");
+    goTo("contact");
+  }
+
+  function confirmPick(run: () => void) {
+    window.clearTimeout(pickTimer.current);
+    try {
+      navigator.vibrate?.(16);
+    } catch {
+      /* ignore */
+    }
+    pickTimer.current = window.setTimeout(run, 280);
+  }
+
+  function chooseTheme(theme: LiveTheme) {
+    if (pickedThemeId || pickedLook) return;
+    setError("");
+    setPickedThemeId(theme.id);
+    confirmPick(() => {
+      setPickedThemeId("");
+      if (theme.splitLooks) {
+        setPreviewThemeId(theme.id);
+        return;
+      }
+      goToContact(theme.id, "");
+    });
+  }
+
+  function chooseLook(nextLook: LookId) {
+    if (pickedLook) return;
+    const id = previewTheme?.id || themeId;
+    if (!id) return;
+    setPickedLook(nextLook);
+    confirmPick(() => goToContact(id, nextLook));
   }
 
   function secretUnlockTap() {
@@ -232,7 +350,7 @@ export function CaptureBooth({
       }
       setError("");
       setPhoto(dataUrl);
-      setStep("form");
+      goTo("review");
     } catch {
       setError("Could not read that image.");
     }
@@ -264,6 +382,7 @@ export function CaptureBooth({
       const blob = await (await fetch(photo)).blob();
       const form = new FormData();
       form.append("photo", blob, "guest.jpg");
+      form.append("name", guestName);
       form.append("email", viaQr ? "" : email);
       form.append("phone", viaQr ? "" : phone);
       form.append("eventId", eventId);
@@ -277,9 +396,9 @@ export function CaptureBooth({
       streamRef.current?.getTracks().forEach((track) => track.stop());
       if (viaQr && json.resultUrl) {
         setResultUrl(json.resultUrl);
-        setStep("qr");
+        goTo("qr");
       } else {
-        setStep("done");
+        goTo("done");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit");
@@ -290,8 +409,8 @@ export function CaptureBooth({
 
   if (step === "camera" || step === "countdown") {
     return (
-      <main className="relative flex h-[100dvh] items-center justify-center overflow-hidden bg-black">
-        <div className="kiosk-viewfinder">
+      <main className={pageClass("relative flex h-[100dvh] items-center justify-center overflow-hidden bg-black")}>
+        <div className={`kiosk-viewfinder${shutter ? " is-capturing" : ""}`}>
           <video
             ref={videoRef}
             playsInline
@@ -299,6 +418,7 @@ export function CaptureBooth({
             className="h-full w-full object-cover"
             style={{ transform: "scaleX(-1)" }}
           />
+          {shutter ? <div className="kiosk-shutter" /> : null}
           <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
           <div className="kiosk-top">
             <div className="kiosk-camera-cue">
@@ -355,118 +475,187 @@ export function CaptureBooth({
     );
   }
 
+  if (step === "review" && photo) {
+    return (
+      <main className={pageClass("relative flex h-[100dvh] items-center justify-center overflow-hidden bg-black")}>
+        <div className="kiosk-viewfinder">
+          <img src={photo} alt="Your photo" className="h-full w-full object-cover" />
+          <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+            <div className="kiosk-top">
+              <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
+              <h1 className="mt-1 text-lg font-light tracking-[0.16em] text-white uppercase sm:text-xl">
+                Use this photo?
+              </h1>
+            </div>
+            <div
+              className="pointer-events-auto bg-gradient-to-t from-black/90 to-transparent px-4 pt-12 sm:px-6"
+              style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+            >
+              <div className="kiosk-review-actions">
+                <button type="button" className="booth-button-secondary kiosk-capture is-secondary w-full" onClick={retake}>
+                  Retake
+                </button>
+                <button type="button" className="booth-button kiosk-capture w-full" onClick={() => goTo("form")}>
+                  Use this photo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   if (step === "form" && photo) {
     return (
-      <main className="flex min-h-full flex-col">
-        <header className="border-b border-[rgba(0,229,255,0.1)] bg-[rgba(18,18,18,0.95)] px-4 py-4 text-center sm:px-6 sm:py-5" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
+      <main className={pageClass("kiosk-send")}>
+        <header className="kiosk-send-header">
           <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
-          <h1 className="page-title mt-2 tracking-[0.12em] sm:tracking-[0.16em]">Send your portrait</h1>
-        </header>
-        <form
-          className="mx-auto grid w-full max-w-5xl flex-1 gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 lg:grid-cols-[300px_1fr]"
-          onSubmit={(event) => void submit(event)}
-        >
-          <div className="flex flex-col gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo}
-              alt="Your photo"
-              className="mx-auto w-full max-w-xs rounded border border-white/10 object-cover lg:max-w-none"
-              style={{ aspectRatio: `${CAPTURE_WIDTH} / ${CAPTURE_HEIGHT}` }}
-            />
-            <button type="button" className="booth-button-secondary w-full" onClick={retake}>
-              Retake
-            </button>
+          <div className="flex items-center justify-center gap-3">
+            <h1 className="page-title mt-2 tracking-[0.12em]">Choose a style</h1>
           </div>
-          <div className="flex flex-col gap-5 rounded border border-white/10 bg-[var(--panel)] p-4 lg:gap-6 lg:p-8">
-            <div>
-              <p className="booth-label">Choose a style</p>
-              {themes.length === 0 ? (
-                <p className="text-sm text-[var(--danger)]">This event has no active themes.</p>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {themes.map((theme) => (
+          <button type="button" className="kiosk-send-back" onClick={() => goTo("review")}>
+            Change photo
+          </button>
+        </header>
+        <div className="kiosk-send-form">
+          <div className="kiosk-theme-scroll">
+            {themes.length === 0 ? (
+              <p className="text-sm text-[var(--danger)]">This event has no active themes.</p>
+            ) : (
+              <div className={`kiosk-theme-grid${themes.some((theme) => themeThumbKind(theme)) ? " has-previews" : ""}`}>
+                {themes.map((theme) => {
+                  const thumb = themeThumbKind(theme);
+                  return (
                     <button
                       key={theme.id}
                       type="button"
-                      className={`kiosk-theme-btn ${themeId === theme.id ? "selected" : ""}`}
-                      onClick={() => {
-                        if (themeId !== theme.id) setLook("");
-                        setThemeId(theme.id);
-                        setError("");
-                      }}
+                      className={`kiosk-theme-btn${thumb ? " has-preview" : ""}${
+                        themeId === theme.id || pickedThemeId === theme.id ? " selected" : ""
+                      }${pickedThemeId === theme.id ? " is-picked" : ""}`}
+                      onClick={() => chooseTheme(theme)}
                     >
-                      {theme.title}
+                      {thumb ? <img src={kioskPreviewUrl(theme, thumb)} alt="" /> : null}
+                      <span>{theme.title}</span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {themes.find((theme) => theme.id === themeId)?.splitLooks ? (
-              <div>
-                <p className="booth-label">Choose a look</p>
-                <p className="mb-3 text-sm text-muted">Pick the styling that fits this portrait.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {LOOK_OPTIONS.map((option) => (
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        {previewTheme ? (
+          <div className="kiosk-preview-overlay">
+            <div className="kiosk-preview-card">
+              <p className="text-xs tracking-[0.28em] uppercase text-accent">Preview</p>
+              <h2 className="mt-2 text-xl font-light tracking-[0.12em] uppercase">{previewTheme.title}</h2>
+              <p className="mt-2 text-sm text-muted">Tap a look to continue.</p>
+              <div className="kiosk-preview-looks">
+                {LOOK_OPTIONS.map((option) => {
+                  const kind =
+                    option.id === "masculine" && previewTheme.hasMasculinePreview
+                      ? "masculine"
+                      : option.id === "feminine" && previewTheme.hasFemininePreview
+                        ? "feminine"
+                        : previewTheme.hasPreview
+                          ? "main"
+                          : "";
+                  return (
                     <button
                       key={option.id}
                       type="button"
-                      className={`kiosk-look-btn ${look === option.id ? "selected" : ""}`}
-                      aria-label={option.label}
-                      onClick={() => {
-                        setLook(option.id);
-                        setError("");
-                      }}
+                      className={`kiosk-preview-look${pickedLook === option.id ? " selected is-picked" : ""}`}
+                      onClick={() => chooseLook(option.id)}
                     >
-                      <LookIcon id={option.id} />
+                      {kind ? <img src={kioskPreviewUrl(previewTheme, kind)} alt="" /> : <LookIcon id={option.id} />}
                       <span>{option.label}</span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+              <button
+                type="button"
+                className="booth-button-secondary mt-5 w-full"
+                onClick={() => {
+                  setPreviewThemeId("");
+                  setPreviewLook("");
+                  setError("");
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </main>
+    );
+  }
+
+  if (step === "contact" && photo) {
+    const selectedTheme = themes.find((theme) => theme.id === themeId);
+    return (
+      <main className={pageClass(`kiosk-send${keyboardOpen ? " is-keyboard" : ""}`)}>
+        <header className="kiosk-send-header">
+          <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
+          <h1 className="page-title mt-2 tracking-[0.12em]">Send your portrait</h1>
+          <button type="button" className="kiosk-send-back" onClick={() => goTo("form")}>
+            Change style
+          </button>
+        </header>
+        <form className="kiosk-send-form kiosk-contact-form" onSubmit={(event) => void submit(event)}>
+          <div className="kiosk-contact-body">
+            {selectedTheme ? (
+              <p className="kiosk-contact-style">
+                Style: {selectedTheme.title}
+                {look ? ` · ${LOOK_OPTIONS.find((option) => option.id === look)?.label || look}` : ""}
+              </p>
             ) : null}
-            <label className="grid gap-2">
-              <span className="booth-label">
-                Email <span className="normal-case tracking-normal text-muted">(or mobile)</span>
-              </span>
-              <input
-                className="booth-input"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(change) => setEmail(change.target.value)}
-                placeholder="you@example.com"
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="booth-label">
-                Mobile <span className="normal-case tracking-normal text-muted">(or email)</span>
-              </span>
-              <input
-                className="booth-input"
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
-                value={phone}
-                onChange={(change) => setPhone(change.target.value)}
-                placeholder="+1 555 0100"
-              />
-            </label>
-            <p className="border-l-2 border-[rgba(0,229,255,0.5)] bg-[rgba(0,229,255,0.05)] px-3 py-2 text-sm text-muted">
-              We’ll send a private link when your portrait is ready. Provide email, mobile, or skip and scan a QR code.
+            <div className="kiosk-send-contact">
+              <label className="grid gap-2">
+                <span className="booth-label mb-0">Name</span>
+                <input
+                  className="booth-input"
+                  type="text"
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  enterKeyHint="next"
+                  value={guestName}
+                  onChange={(change) => setGuestName(change.target.value)}
+                  placeholder="Your name"
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="booth-label mb-0">Email</span>
+                <input
+                  className="booth-input"
+                  type="email"
+                  autoComplete="email"
+                  enterKeyHint="next"
+                  value={email}
+                  onChange={(change) => setEmail(change.target.value)}
+                  placeholder="you@example.com"
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="booth-label mb-0">Mobile</span>
+                <PhoneField value={phone} onChange={setPhone} />
+              </label>
+            </div>
+            <p className="kiosk-contact-hint">
+              We’ll send a private link when your portrait is ready. Email, mobile, or skip and scan a QR code.
             </p>
-            {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
+            {error ? <p className="kiosk-alert">{error}</p> : null}
             <div className="kiosk-form-actions">
-              <button type="submit" className="booth-button w-full" disabled={busy || credits < 1}>
+              <button type="submit" className="booth-button kiosk-capture w-full" disabled={busy || credits < 1}>
                 {busy ? "Sending…" : "Send my portrait"}
               </button>
               <button
                 type="button"
-                className="booth-button-secondary w-full"
+                className="booth-button-secondary kiosk-capture is-secondary w-full"
                 disabled={busy || credits < 1}
                 onClick={() => void submit(null, true)}
               >
-                {busy ? "Creating link…" : "Skip - QR code only"}
+                {busy ? "Creating link…" : "Skip — QR only"}
               </button>
             </div>
           </div>
@@ -477,7 +666,7 @@ export function CaptureBooth({
 
   if (step === "qr" && resultUrl) {
     return (
-      <main className="flex min-h-full flex-col items-center justify-center px-4 py-12 text-center sm:px-6">
+      <main className={pageClass("flex min-h-full flex-col items-center justify-center px-4 py-12 text-center sm:px-6")}>
         <p className="text-xs tracking-[0.28em] uppercase text-accent">{eventName || APP_NAME}</p>
         <h1 className="page-title mt-4">Scan for your portraits</h1>
         <p className="mt-3 max-w-md text-muted">
@@ -495,10 +684,10 @@ export function CaptureBooth({
   }
 
   return (
-    <main className="flex min-h-full flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
+    <main className={pageClass("flex min-h-full flex-col items-center justify-center px-4 py-16 text-center sm:px-6")}>
       <p className="text-xs tracking-[0.28em] uppercase text-accent">{APP_NAME}</p>
-      <h1 className="page-title mt-6">Thank you</h1>
-      <p className="mt-4 max-w-xl text-muted">
+      <h1 className="page-title mt-6 text-[clamp(1.7rem,5.5vw,2.25rem)]">Thank you</h1>
+      <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">
         We’re creating your portrait. This takes about a minute. We’ll email and/or text a private
         link when it’s ready. You can step away.
       </p>

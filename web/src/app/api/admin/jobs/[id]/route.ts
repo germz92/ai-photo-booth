@@ -3,6 +3,7 @@ import { jobOutputKeys } from "@/lib/jobs";
 import { resultLink } from "@/lib/delivery";
 import { prisma } from "@/lib/prisma";
 import { attachThemeLooks } from "@/lib/theme-looks-db";
+import { getJobManualUpload, getJobName, setJobName } from "@/lib/job-name";
 import { parseJobContact } from "@/lib/validate";
 import { clampBatch } from "@/lib/workflow";
 
@@ -44,6 +45,8 @@ export async function GET(
     job: {
       id: job.id,
       status: job.status,
+      name: await getJobName(job.id, job.name),
+      manualUpload: await getJobManualUpload(job.id),
       email: job.email,
       phone: job.phone,
       prompt,
@@ -78,6 +81,7 @@ export async function PATCH(
   if (!job) return Response.json({ error: "Not found" }, { status: 404 });
 
   const body = (await request.json()) as {
+    name?: string;
     email?: string;
     phone?: string;
     prompt?: string;
@@ -88,7 +92,10 @@ export async function PATCH(
   const contact = parseJobContact(
     body.email !== undefined ? body.email : job.email,
     body.phone !== undefined ? body.phone : job.phone,
-    { required: false },
+    {
+      required: false,
+      name: body.name !== undefined ? body.name : await getJobName(job.id, job.name),
+    },
   );
   if ("error" in contact) {
     return Response.json({ error: contact.error }, { status: 400 });
@@ -128,9 +135,11 @@ export async function PATCH(
         smsError: contact.phone === job.phone ? job.smsError : null,
       },
     });
+    await setJobName(id, contact.name);
     return Response.json({
       job: {
         id: updated.id,
+        name: contact.name,
         email: updated.email,
         phone: updated.phone,
         prompt: (updated as { prompt?: string }).prompt ?? prompt,

@@ -9,7 +9,8 @@ export async function POST(request: Request) {
   if (!session) return unauthorized();
 
   const form = await request.formData();
-  const photoResult = photoFromForm(form);
+  const manual = String(form.get("source") || "") === "manual";
+  const photoResult = photoFromForm(form, { maxBytes: manual ? 12 * 1024 * 1024 : undefined });
   if ("error" in photoResult) {
     return Response.json({ error: photoResult.error }, { status: photoResult.status });
   }
@@ -31,8 +32,10 @@ export async function POST(request: Request) {
     eventId: parsed.data.eventId,
     themeId: parsed.data.themeId,
     look: parsed.data.look,
+    name: parsed.data.name,
     email: parsed.data.email,
     phone: parsed.data.phone,
     photo: photoResult.photo,
+    source: manual ? "manual" : "kiosk",
   });
 }

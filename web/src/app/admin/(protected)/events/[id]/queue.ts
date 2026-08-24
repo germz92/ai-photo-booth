@@ -1,6 +1,7 @@
 export type QueueJob = {
   id: string;
   status: string;
+  name: string | null;
   email: string | null;
   phone: string | null;
   emailStatus: string;
@@ -13,6 +14,7 @@ export type QueueJob = {
   hasOriginal: boolean;
   outputCount: number;
   resultToken: string;
+  manualUpload: boolean;
 };
 
 function isoDate(value: Date | string | undefined) {
@@ -30,6 +32,7 @@ export function mediaVersion(value: Date | string | number | undefined) {
 export function toQueueJob(job: {
   id: string;
   status: string;
+  name?: string | null;
   email: string | null;
   phone: string | null;
   emailStatus: string;
@@ -45,11 +48,13 @@ export function toQueueJob(job: {
   hasOriginal?: boolean;
   outputCount?: number;
   resultToken?: string | null;
+  manualUpload?: boolean;
 }): QueueJob {
   const createdAt = isoDate(job.createdAt);
   return {
     id: job.id,
     status: job.status,
+    name: job.name || null,
     email: job.email,
     phone: job.phone,
     emailStatus: job.emailStatus,
@@ -62,6 +67,7 @@ export function toQueueJob(job: {
     hasOriginal: Boolean(job.originalKey ?? job.hasOriginal),
     outputCount: job.outputKeys?.length || (job.outputKey ? 1 : job.outputCount) || 0,
     resultToken: job.resultToken || "",
+    manualUpload: Boolean(job.manualUpload),
   };
 }
 

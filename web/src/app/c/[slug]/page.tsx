@@ -44,10 +44,14 @@ export default async function SharedCapturePage({
   ]);
   if (!event) notFound();
 
-  const themes = (await attachThemeLooks(event.themes)).map(({ id, title, splitLooks }) => ({
-    id,
-    title,
-    splitLooks,
+  const themes = (await attachThemeLooks(event.themes)).map((theme) => ({
+    id: theme.id,
+    title: theme.title,
+    splitLooks: theme.splitLooks,
+    hasPreview: theme.hasPreview,
+    hasMasculinePreview: theme.hasMasculinePreview,
+    hasFemininePreview: theme.hasFemininePreview,
+    previewVersion: theme.previewVersion,
   }));
 
   return (

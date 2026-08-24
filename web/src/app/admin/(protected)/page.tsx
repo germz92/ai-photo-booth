@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { listOwnedEventIds, requireUser } from "@/lib/access";
+import { toEventListItems } from "@/lib/event-list";
 import { prisma } from "@/lib/prisma";
 import { EventList } from "./EventList";
 
@@ -16,19 +17,14 @@ export default async function AdminHomePage() {
     : [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <div>
         <h1 className="page-title">Events</h1>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 max-w-2xl text-sm text-muted">
           Create an event, add themes, then open that event’s kiosk from settings.
         </p>
       </div>
-      <EventList
-        initialEvents={events.map((event) => ({
-          ...event,
-          eventDate: event.eventDate.toISOString(),
-        }))}
-      />
+      <EventList initialEvents={await toEventListItems(events)} />
     </main>
   );
 }

@@ -8,16 +8,18 @@ import { loadThemeLooks, resolveJobKreaPrompt } from "./theme-looks-db";
 import { isLookId, resolveThemePrompt } from "./theme-looks";
 import { originalThumbKey, saveThumb } from "./thumbs";
 import { creditErrorResponse, CreditError, withGenerationCredit } from "./users";
-import { createJobSchema, normalizePhone } from "./validate";
+import { setJobGuestFields } from "./job-name";
+import { createJobSchema, normalizeGuestName, normalizePhone } from "./validate";
 import { clampBatch } from "./workflow";
 
-export function photoFromForm(form: FormData) {
+export function photoFromForm(form: FormData, options?: { maxBytes?: number }) {
   const photo = form.get("photo");
+  const maxBytes = options?.maxBytes ?? 6 * 1024 * 1024;
   if (!(photo instanceof File) || photo.size < 1) {
     return { error: "A photo is required", status: 400 as const };
   }
-  if (photo.size > 6 * 1024 * 1024) {
-    return { error: "Photo must be under 6MB", status: 400 as const };
+  if (photo.size > maxBytes) {
+    return { error: `Photo must be under ${Math.round(maxBytes / (1024 * 1024))}MB`, status: 400 as const };
   }
   return { photo };
 }
@@ -25,12 +27,13 @@ export function photoFromForm(form: FormData) {
 export function jobFieldsFromForm(form: FormData, eventId: string) {
   const lookValue = String(form.get("look") || "");
   return createJobSchema.safeParse({
+    name: String(form.get("name") || ""),
     email: String(form.get("email") || ""),
     phone: String(form.get("phone") || ""),
     eventId,
     themeId: String(form.get("themeId") || ""),
     look: isLookId(lookValue) ? lookValue : undefined,
-    skipContact: String(form.get("skipContact") || "") === "1",
+    skipContact: String(form.get("skipContact") || "") === "1" || String(form.get("source") || "") === "manual",
   });
 }
 
@@ -39,9 +42,11 @@ export async function submitBoothJob(options: {
   eventId: string;
   themeId: string;
   look?: string;
+  name?: string;
   email?: string;
   phone?: string;
   photo: File;
+  source?: "kiosk" | "manual";
 }) {
   const theme = await prisma.theme.findFirst({
     where: {
@@ -89,6 +94,7 @@ export async function submitBoothJob(options: {
         putObject(originalKey, bytes, options.photo.type || "image/jpeg"),
       ]);
       const token = crypto.randomUUID().replace(/-/g, "");
+      const name = normalizeGuestName(options.name) || null;
       const email = options.email || null;
       const phone = normalizePhone(options.phone) || null;
 
@@ -112,6 +118,12 @@ export async function submitBoothJob(options: {
           smsStatus: phone ? "pending" : "skipped",
         },
       });
+      if (name || options.source === "manual") {
+        await setJobGuestFields(job.id, {
+          name,
+          manualUpload: options.source === "manual",
+        });
+      }
 
       after(async () => {
         const thumb = saveThumb(originalThumbKey(job.id), bytes).catch((error) => {

@@ -38,6 +38,7 @@ export async function POST(
     eventId: kiosk.eventId,
     themeId: parsed.data.themeId,
     look: parsed.data.look,
+    name: parsed.data.name,
     email: parsed.data.email,
     phone: parsed.data.phone,
     photo: photoResult.photo,

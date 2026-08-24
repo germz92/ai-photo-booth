@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { APP_NAME } from "@/lib/brand";
 import { jobOutputKeys, linkExpired } from "@/lib/jobs";
+import { getJobName } from "@/lib/job-name";
 import { prisma } from "@/lib/prisma";
 import { ResultPending } from "./ResultPending";
 
@@ -35,14 +36,15 @@ export default async function ResultPage({
   }
 
   const keys = jobOutputKeys(job);
+  const guestName = await getJobName(job.id, job.name);
   if (job.status !== "complete" || !keys.length) {
-    return <ResultPending />;
+    return <ResultPending name={guestName} />;
   }
 
   return (
     <main className="mx-auto flex min-h-full max-w-5xl flex-col px-4 py-10 sm:px-6 sm:py-12">
       <p className="text-xs tracking-[0.28em] uppercase text-accent">{APP_NAME}</p>
-      <h1 className="page-title mt-4">Your portrait</h1>
+      <h1 className="page-title mt-4">{guestName ? `${guestName}, your portrait` : "Your portrait"}</h1>
       <p className="mt-2 text-muted">Save your image{keys.length > 1 ? "s" : ""}. The link expires in 48 hours.</p>
       <p className="mt-3 flex items-start gap-2 text-sm text-white sm:items-center">
         <svg

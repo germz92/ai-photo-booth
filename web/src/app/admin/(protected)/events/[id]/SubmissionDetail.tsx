@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { OptimizePromptButton } from "@/components/OptimizePromptButton";
 import { QrCodeImage } from "@/components/QrCodeImage";
 import { LOOK_OPTIONS, resolveThemePrompt, type LookId } from "@/lib/theme-looks";
+import { PhoneField } from "@/components/PhoneField";
 import { captureLightbox, jobMediaSrc, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
 
 export type JobThemeOption = {
@@ -19,6 +20,7 @@ export type JobThemeOption = {
 export type JobDetail = {
   id: string;
   status: string;
+  name: string | null;
   email: string | null;
   phone: string | null;
   prompt: string;
@@ -35,6 +37,7 @@ export type JobDetail = {
   hasOriginal: boolean;
   outputCount: number;
   resultUrl: string;
+  manualUpload?: boolean;
   themes?: JobThemeOption[];
 };
 
@@ -61,6 +64,7 @@ export function SubmissionDetail({
 }) {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [themes, setThemes] = useState<JobThemeOption[]>([]);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -90,6 +94,7 @@ export function SubmissionDetail({
     setJob(next);
     if (next.themes) setThemes(next.themes);
     if (options?.form === false) return;
+    setName(next.name || "");
     setEmail(next.email || "");
     setPhone(next.phone || "");
     setPrompt(next.prompt || "");
@@ -136,7 +141,7 @@ export function SubmissionDetail({
   }, [jobId]);
 
   function contactPayload() {
-    return { email, phone, prompt, batch, themeId };
+    return { name, email, phone, prompt, batch, themeId };
   }
 
   async function saveContact() {
@@ -256,7 +261,10 @@ export function SubmissionDetail({
               {selectedTheme?.title || job?.themeTitle || "Details"}
             </h2>
             {job ? (
-              <p className="mt-1 text-xs text-muted">{new Date(job.createdAt).toLocaleString()}</p>
+              <p className="mt-1 text-xs text-muted">
+                {new Date(job.createdAt).toLocaleString()}
+                {job.manualUpload ? <span className="submission-manual">Manual</span> : null}
+              </p>
             ) : null}
           </div>
           <button type="button" className="booth-button-secondary min-h-10 px-3 text-xs" onClick={onClose}>
@@ -326,21 +334,35 @@ export function SubmissionDetail({
 
             <div className="grid gap-5">
               <label className="grid gap-2">
+                <span className="booth-label">Name</span>
+                <input
+                  className="booth-input"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-2">
                 <span className="booth-label">Email</span>
                 <input className="booth-input" value={email} onChange={(event) => setEmail(event.target.value)} />
               </label>
               <label className="grid gap-2">
                 <span className="booth-label">Mobile</span>
-                <input className="booth-input" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                <PhoneField value={phone} onChange={setPhone} />
               </label>
               <p className="-mt-2 text-xs text-muted">
                 email {job.emailStatus}
+                {job.email ? ` · ${job.email}` : ""}
                 {job.emailError ? ` (${job.emailError})` : ""} · sms {job.smsStatus}
+                {job.phone ? ` · ${job.phone}` : ""}
                 {job.smsError ? ` (${job.smsError})` : ""}
               </p>
               {job.resultUrl ? (
                 <div className="grid gap-3 rounded border border-white/10 p-4">
-                  <span className="booth-label">Guest link</span>
+                  <span className="booth-label">Private gallery</span>
+                  {name || job.name ? (
+                    <p className="text-sm text-white">{name || job.name}</p>
+                  ) : null}
                   <div className="flex items-start gap-4">
                     <div className="grid min-w-0 flex-1 gap-3">
                       <p className="break-all text-sm text-white">{job.resultUrl}</p>

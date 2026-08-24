@@ -1,5 +1,6 @@
 import { getDocument, setDocumentFields } from "./prisma";
 import { parseThemeLooks, themeLooksPayload, type ThemeLooks } from "./theme-looks";
+import { parseThemePreviews, themePreviewFlags } from "./theme-previews";
 import { kreaRefinePromptFromQwen } from "./krea-refine-prompt";
 import { defaultKreaPrompt } from "./workflow";
 
@@ -125,8 +126,12 @@ export async function lockThemeKreaPrompts(id: string, looks: ThemeLooks, prompt
 export async function attachThemeLooks<T extends { id: string; prompt?: string }>(themes: T[]) {
   return Promise.all(
     themes.map(async (theme) => {
-      const looks = await loadThemeLooks(theme.id, theme.prompt || "");
-      return { ...theme, ...looks };
+      const doc = await getDocument<Record<string, unknown>>("Theme", theme.id);
+      return {
+        ...theme,
+        ...parseThemeLooks(doc, theme.prompt || ""),
+        ...themePreviewFlags(parseThemePreviews(doc)),
+      };
     }),
   );
 }

@@ -1,4 +1,5 @@
 import { APP_EMAIL_FROM } from "./brand";
+import { getJobName } from "./job-name";
 import { prisma } from "./prisma";
 import { appUrl } from "./runpod";
 
@@ -21,20 +22,32 @@ export function resultLink(token: string) {
   return `${appUrl()}/r/${token}`;
 }
 
-async function sendEmail(to: string, link: string) {
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => {
+    if (char === "&") return "&amp;";
+    if (char === "<") return "&lt;";
+    if (char === ">") return "&gt;";
+    if (char === '"') return "&quot;";
+    return "&#39;";
+  });
+}
+
+async function sendEmail(to: string, link: string, name?: string | null) {
   if (mockEmail()) {
     console.log(`[email mock] ${to} ${link}`);
     return;
   }
 
+  const greeting = name ? `Hi ${escapeHtml(name)},` : "Hi,";
   const sgMail = await import("@sendgrid/mail");
   sgMail.default.setApiKey(process.env.SENDGRID_API_KEY as string);
   const from = process.env.EMAIL_FROM || APP_EMAIL_FROM;
   await sgMail.default.send({
     to,
     from,
-    subject: "Your portrait is ready",
+    subject: name ? `${name}, your portrait is ready` : "Your portrait is ready",
     html: `
+      <p>${greeting}</p>
       <p>Your AI portrait is ready.</p>
       <p><a href="${link}">View and download your photo</a></p>
       <p>On a phone, press and hold the photo, then tap Save Image.</p>
@@ -43,7 +56,7 @@ async function sendEmail(to: string, link: string) {
   });
 }
 
-async function sendSms(to: string, link: string) {
+async function sendSms(to: string, link: string, name?: string | null) {
   if (mockSms()) {
     console.log(`[sms mock] ${to} ${link}`);
     return;
@@ -57,7 +70,7 @@ async function sendSms(to: string, link: string) {
   await client.messages.create({
     to,
     from: process.env.TWILIO_FROM_NUMBER,
-    body: `Your portrait is ready: ${link} (link expires in 48 hours)`,
+    body: `${name ? `${name}, your` : "Your"} portrait is ready: ${link} (link expires in 48 hours)`,
   });
 }
 
@@ -92,6 +105,7 @@ export async function deliverJob(
   }
 
   const link = resultLink(job.resultToken);
+  const guestName = await getJobName(job.id, job.name);
   const channels = options?.channels ?? ["email", "sms"];
   const tasks: Array<Promise<void>> = [];
 
@@ -107,7 +121,7 @@ export async function deliverJob(
         }
         if (job.emailStatus === "sent" && !options?.force) return;
         const result = await attemptChannel(
-          () => sendEmail(job.email as string, link),
+          () => sendEmail(job.email as string, link, guestName),
           options?.force ? 0 : job.emailAttempts,
         );
         await prisma.job.update({
@@ -134,7 +148,7 @@ export async function deliverJob(
         }
         if (job.smsStatus === "sent" && !options?.force) return;
         const result = await attemptChannel(
-          () => sendSms(job.phone as string, link),
+          () => sendSms(job.phone as string, link, guestName),
           options?.force ? 0 : job.smsAttempts,
         );
         await prisma.job.update({

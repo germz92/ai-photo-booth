@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export function ResultPending() {
+export function ResultPending({ name }: { name?: string | null }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -14,7 +14,9 @@ export function ResultPending() {
   return (
     <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center px-4 py-16 text-center sm:px-6">
       <h1 className="page-title">Still working</h1>
-      <p className="mt-3 text-muted">Your portrait is still being generated. This page updates automatically.</p>
+      <p className="mt-3 text-muted">
+        {name ? `${name}, your` : "Your"} portrait is still being generated. This page updates automatically.
+      </p>
     </main>
   );
 }

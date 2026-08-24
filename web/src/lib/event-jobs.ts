@@ -1,3 +1,4 @@
+import { attachJobNames } from "./job-name";
 import { prisma, runMongoCommand } from "./prisma";
 import { toQueueJob, type QueueJob } from "@/app/admin/(protected)/events/[id]/queue";
 
@@ -50,11 +51,17 @@ async function matchingThemeIds(eventId: string, q: string) {
   return themes.filter((theme) => theme.title.toLowerCase().includes(needle)).map((theme) => theme.id);
 }
 
-async function jobFilter(eventId: string, options: { q?: string; status?: JobListFilter; cursor?: string }) {
+async function jobFilter(
+  eventId: string,
+  options: { q?: string; status?: JobListFilter; cursor?: string; themeId?: string },
+) {
   const filter: Record<string, unknown> = { eventId: { $oid: eventId } };
   if (options.status === "complete") filter.status = "complete";
   if (options.status === "failed") filter.status = "failed";
   if (options.status === "processing") filter.status = { $in: [...PROCESSING_STATUSES] };
+  if (options.themeId && /^[a-f0-9]{24}$/i.test(options.themeId)) {
+    filter.themeId = { $oid: options.themeId };
+  }
 
   const clauses: Record<string, unknown>[] = [];
   const q = options.q?.trim();
@@ -62,6 +69,7 @@ async function jobFilter(eventId: string, options: { q?: string; status?: JobLis
     const rx = { $regex: escapeRegex(q), $options: "i" };
     const themeIds = await matchingThemeIds(eventId, q);
     const searchOr: Record<string, unknown>[] = [
+      { name: rx },
       { email: rx },
       { phone: rx },
       { prompt: rx },
@@ -115,14 +123,18 @@ export async function eventJobCounts(eventId: string): Promise<Omit<JobCounts, "
 
 export async function listEventJobs(
   eventId: string,
-  options: { q?: string; status?: JobListFilter; cursor?: string; limit?: number } = {},
+  options: { q?: string; status?: JobListFilter; cursor?: string; limit?: number; themeId?: string } = {},
 ) {
   const limit = Math.min(50, Math.max(1, options.limit || JOB_PAGE_SIZE));
   const [filter, counts] = await Promise.all([
     jobFilter(eventId, options),
     eventJobCounts(eventId),
   ]);
-  const matchedFilter = await jobFilter(eventId, { q: options.q, status: options.status });
+  const matchedFilter = await jobFilter(eventId, {
+    q: options.q,
+    status: options.status,
+    themeId: options.themeId,
+  });
   const matched = await countJobs(matchedFilter);
 
   const found = await runMongoCommand<{ cursor?: { firstBatch?: Array<{ _id?: unknown }> } }>({
@@ -146,6 +158,7 @@ export async function listEventJobs(
       return job ? toQueueJob(job) : null;
     })
     .filter((job): job is QueueJob => Boolean(job));
+  await attachJobNames(jobs);
 
   const nextCursor = hasMore && jobs.length ? jobCursor(jobs[jobs.length - 1]) : null;
   return {

@@ -2,20 +2,43 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { BoothSelect } from "@/components/BoothSelect";
+import type { EventListItem } from "@/lib/event-list";
 
-type EventRow = {
-  id: string;
-  name: string;
-  eventDate: string;
-  status: string;
-  _count: { themes: number; jobs: number };
-};
+const EVENT_STATUS_OPTIONS = [
+  { value: "draft", label: "draft" },
+  { value: "live", label: "live" },
+  { value: "archived", label: "archived" },
+];
 
-function dateValue(value: string) {
-  return new Date(value).toISOString().slice(0, 10);
+function dateLabel(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
+function monogram(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase() || "EV";
+}
+
+function logoSrc(event: EventListItem) {
+  if (!event.hasLogo) return "";
+  const version = event.logoVersion ? `?v=${encodeURIComponent(event.logoVersion)}` : "";
+  return `/api/admin/events/${event.id}/logo${version}`;
+}
+
+function EventLogo({ event }: { event: EventListItem }) {
+  const [failed, setFailed] = useState(false);
+  const src = logoSrc(event);
+  if (src && !failed) {
+    return <img src={src} alt="" className="event-card-logo-image" onError={() => setFailed(true)} />;
+  }
+  return <span className="event-card-monogram">{monogram(event.name)}</span>;
+}
+
+export function EventList({ initialEvents }: { initialEvents: EventListItem[] }) {
   const router = useRouter();
   const [events, setEvents] = useState(initialEvents);
   const [name, setName] = useState("");
@@ -32,7 +55,7 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, eventDate, status: "draft" }),
     });
-    const json = (await response.json()) as { event?: EventRow; error?: string };
+    const json = (await response.json()) as { event?: { id: string }; error?: string };
     setBusy(false);
     if (!response.ok || !json.event) {
       setError(json.error || "Could not create event");
@@ -44,7 +67,7 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
 
   async function refresh() {
     const response = await fetch("/api/admin/events");
-    const json = (await response.json()) as { events?: EventRow[] };
+    const json = (await response.json()) as { events?: EventListItem[] };
     if (json.events) setEvents(json.events);
   }
 
@@ -58,69 +81,87 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
   }
 
   return (
-    <div className="grid gap-10">
-      <form className="grid gap-4 md:grid-cols-[1fr_auto_auto]" onSubmit={(event) => void onCreate(event)}>
-        <label className="grid gap-1 text-sm">
-          Event name
-          <input
-            className="booth-input"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            placeholder="Acme Gala"
-          />
-        </label>
-        <label className="grid gap-1 text-sm">
-          Date
-          <input
-            className="booth-input"
-            type="date"
-            value={eventDate}
-            onChange={(event) => setEventDate(event.target.value)}
-            required
-          />
-        </label>
-        <button type="submit" className="booth-button w-full md:w-auto md:self-end" disabled={busy}>
-          {busy ? "Saving…" : "Create"}
-        </button>
+    <div className="grid gap-8">
+      <form className="event-create" onSubmit={(event) => void onCreate(event)}>
+        <p className="booth-label mb-0">New event</p>
+        <div className="event-create-fields">
+          <label className="grid gap-1 text-sm">
+            Event name
+            <input
+              className="booth-input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              placeholder="Acme Gala"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Date
+            <input
+              className="booth-input"
+              type="date"
+              value={eventDate}
+              onChange={(event) => setEventDate(event.target.value)}
+              required
+            />
+          </label>
+          <button type="submit" className="booth-button w-full md:w-auto md:self-end" disabled={busy}>
+            {busy ? "Saving…" : "Create"}
+          </button>
+        </div>
+        {error ? <p className="text-sm text-[var(--danger)]">{error}</p> : null}
       </form>
-      {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
-      <div className="grid gap-3">
-        {events.length === 0 ? (
-          <p className="text-sm text-muted">No events yet.</p>
-        ) : (
-          events.map((event) => (
-            <div
+      {events.length === 0 ? (
+        <div className="event-empty">
+          <p className="event-empty-title">No events yet</p>
+          <p className="text-sm text-muted">Create one above, then add themes and open the kiosk.</p>
+        </div>
+      ) : (
+        <div className="event-list-grid">
+          {events.map((event) => (
+            <article
               key={event.id}
-              className="flex flex-wrap items-center justify-between gap-3 border border-[var(--line)] px-4 py-3"
+              className={`event-card${event.status === "archived" ? " is-archived" : ""}`}
             >
-              <a href={`/admin/events/${event.id}`} className="min-w-0">
-                <p className="font-medium">{event.name}</p>
-                <p className="text-xs text-muted">
-                  {dateValue(event.eventDate)} · {event._count.themes} themes · {event._count.jobs} jobs
-                </p>
-              </a>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                <select
-                  className="booth-input min-h-11 min-w-0 flex-1 sm:w-32 sm:flex-none"
+              <div className="event-card-top">
+                <a href={`/admin/events/${event.id}`} className="event-card-logo" aria-hidden="true">
+                  <EventLogo event={event} />
+                </a>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <a href={`/admin/events/${event.id}`} className="min-w-0">
+                      <h2 className="event-card-title">{event.name}</h2>
+                    </a>
+                    <span className={`event-status is-${event.status}`}>{event.status}</span>
+                  </div>
+                  <p className="event-card-meta">
+                    {dateLabel(event.eventDate)}
+                    <span>·</span>
+                    {event._count.themes} {event._count.themes === 1 ? "theme" : "themes"}
+                    <span>·</span>
+                    {event._count.jobs} {event._count.jobs === 1 ? "portrait" : "portraits"}
+                  </p>
+                </div>
+              </div>
+              <div className="event-card-actions">
+                <BoothSelect
+                  className="event-card-status"
+                  label={`Status for ${event.name}`}
                   value={event.status}
-                  onChange={(change) => void setStatus(event.id, change.target.value)}
-                >
-                  <option value="draft">draft</option>
-                  <option value="live">live</option>
-                  <option value="archived">archived</option>
-                </select>
-                <a className="booth-button-secondary min-h-11 px-4 text-xs" href={`/admin/events/${event.id}`}>
+                  options={EVENT_STATUS_OPTIONS}
+                  onChange={(next) => void setStatus(event.id, next)}
+                />
+                <a className="booth-button-secondary is-compact" href={`/admin/events/${event.id}`}>
                   Open
                 </a>
                 {event.status !== "archived" ? (
-                  <a className="booth-button min-h-11 px-4 text-xs" href={`/kiosk/${event.id}`}>
+                  <a className="booth-button is-compact" href={`/kiosk/${event.id}`}>
                     Kiosk
                   </a>
                 ) : null}
                 <a
-                  className="booth-button-secondary min-h-11 px-4 text-xs"
+                  className="booth-button-secondary is-compact"
                   href={`/e/${event.id}`}
                   target="_blank"
                   rel="noreferrer"
@@ -128,10 +169,10 @@ export function EventList({ initialEvents }: { initialEvents: EventRow[] }) {
                   TV
                 </a>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

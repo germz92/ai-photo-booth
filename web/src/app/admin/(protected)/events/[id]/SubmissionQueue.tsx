@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ManualUpload, type QueueTheme } from "./ManualUpload";
 import { captureLightbox, jobMediaSrc, MediaLightbox, outputLightbox, type LightboxState } from "./MediaLightbox";
 import { SubmissionDetail } from "./SubmissionDetail";
 import { mediaVersion, type QueueJob } from "./queue";
@@ -22,12 +23,14 @@ export function SubmissionQueue({
   initialNextCursor,
   initialCounts,
   themesById,
+  themes,
 }: {
   eventId: string;
   initialJobs: QueueJob[];
   initialNextCursor: string | null;
   initialCounts: JobCounts;
   themesById: Record<string, { title: string }>;
+  themes: QueueTheme[];
 }) {
   const [jobs, setJobs] = useState(initialJobs);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
@@ -36,6 +39,7 @@ export function SubmissionQueue({
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -160,12 +164,17 @@ export function SubmissionQueue({
         </div>
       </div>
 
-      <input
-        className="booth-input max-w-xl"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search by email, mobile, theme, or prompt"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          className="booth-input max-w-xl flex-1"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by name, email, mobile, theme, or prompt"
+        />
+        <button type="button" className="booth-button-secondary min-h-12 px-4 text-xs" onClick={() => setUploadOpen(true)}>
+          Manual upload
+        </button>
+      </div>
 
       {loading && jobs.length === 0 ? (
         <p className="text-sm text-muted">Loading…</p>
@@ -239,17 +248,15 @@ export function SubmissionQueue({
               </div>
               <div className="min-w-0">
                 <p className="truncate font-medium text-white">
-                  {job.email || job.phone || "QR guest"}
+                  {job.name || "Guest"}
+                  {job.manualUpload ? <span className="submission-manual">Manual</span> : null}
                 </p>
-                <p className="mt-1 text-xs text-muted">
-                  {themesById[job.themeId]?.title || "Theme"} ·{" "}
-                  {new Date(job.createdAt).toLocaleString()}
+                <p className="mt-1 truncate text-xs text-accent">
+                  {themesById[job.themeId]?.title || "Theme"}
                 </p>
+                <p className="mt-1 text-xs text-muted">{new Date(job.createdAt).toLocaleString()}</p>
                 <span className={`submission-status ${statusClass(job.status)}`}>{job.status}</span>
                 {job.error ? <p className="mt-2 text-xs text-[var(--danger)]">{job.error}</p> : null}
-                <p className="mt-2 text-xs text-muted">
-                  email {job.emailStatus} · sms {job.smsStatus}
-                </p>
               </div>
               <div className="mt-3 flex gap-2">
                 <button
@@ -285,6 +292,22 @@ export function SubmissionQueue({
         </button>
       ) : null}
 
+      {uploadOpen ? (
+        <ManualUpload
+          eventId={eventId}
+          themes={themes}
+          onClose={() => setUploadOpen(false)}
+          onCreated={() => {
+            setUploadOpen(false);
+            void fetchJobs({}).then((json) => {
+              if (!json.jobs) return;
+              setJobs(json.jobs);
+              setNextCursor(json.nextCursor || null);
+              if (json.counts) setCounts(json.counts);
+            });
+          }}
+        />
+      ) : null}
       {openId ? (
         <SubmissionDetail
           jobId={openId}

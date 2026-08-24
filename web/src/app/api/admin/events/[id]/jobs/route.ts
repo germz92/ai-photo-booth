@@ -20,6 +20,7 @@ export async function GET(
     status: FILTERS.includes(status as JobListFilter) ? (status as JobListFilter) : "all",
     cursor: url.searchParams.get("cursor") || undefined,
     limit: Number(url.searchParams.get("limit") || JOB_PAGE_SIZE) || JOB_PAGE_SIZE,
+    themeId: url.searchParams.get("themeId") || undefined,
   });
   return Response.json(listed);
 }

@@ -2,7 +2,11 @@
 
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { BoothSelect } from "@/components/BoothSelect";
+import { SamplePageLink } from "./SamplePageLink";
 import { AutoAdaptLooksButton, OptimizePromptButton } from "@/components/OptimizePromptButton";
+import { ThemePreviewControls } from "@/components/ThemePreviewControls";
+import type { ThemePreviewFlags } from "@/lib/theme-previews";
 
 type Theme = {
   id: string;
@@ -13,6 +17,10 @@ type Theme = {
   femininePrompt: string;
   sortOrder: number;
   active: boolean;
+  hasPreview: boolean;
+  hasMasculinePreview: boolean;
+  hasFemininePreview: boolean;
+  previewVersion: string;
 };
 
 export type SettingsEvent = {
@@ -41,6 +49,10 @@ function withLooks(theme: Theme): Theme {
     splitLooks: theme.splitLooks === true,
     masculinePrompt: theme.masculinePrompt || "",
     femininePrompt: theme.femininePrompt || "",
+    hasPreview: theme.hasPreview === true,
+    hasMasculinePreview: theme.hasMasculinePreview === true,
+    hasFemininePreview: theme.hasFemininePreview === true,
+    previewVersion: theme.previewVersion || "",
   };
 }
 
@@ -69,6 +81,7 @@ export function EventSettings({
   const [splitLooks, setSplitLooks] = useState(false);
   const [masculinePrompt, setMasculinePrompt] = useState("");
   const [femininePrompt, setFemininePrompt] = useState("");
+  const [adaptFromLook, setAdaptFromLook] = useState<"masculine" | "feminine">("masculine");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
@@ -82,6 +95,7 @@ export function EventSettings({
     setSplitLooks(false);
     setMasculinePrompt("");
     setFemininePrompt("");
+    setAdaptFromLook("masculine");
     setThemeModal({ mode: "add" });
   }
 
@@ -93,7 +107,20 @@ export function EventSettings({
     setSplitLooks(next.splitLooks);
     setMasculinePrompt(next.masculinePrompt || next.prompt);
     setFemininePrompt(next.femininePrompt || next.prompt);
+    setAdaptFromLook("masculine");
     setThemeModal({ mode: "edit", theme: next });
+  }
+
+  function applyThemePreviews(themeId: string, flags: ThemePreviewFlags) {
+    setEvent((current) => ({
+      ...current,
+      themes: current.themes.map((theme) => (theme.id === themeId ? { ...theme, ...flags } : theme)),
+    }));
+    setThemeModal((current) =>
+      current?.mode === "edit" && current.theme.id === themeId
+        ? { mode: "edit", theme: { ...current.theme, ...flags } }
+        : current,
+    );
   }
 
   function toggleSplitLooks(enabled: boolean) {
@@ -276,14 +303,19 @@ export function EventSettings({
             required
           />
         </label>
-        <label className="grid gap-1 text-sm">
+        <div className="grid gap-1 text-sm">
           Status
-          <select className="booth-input" value={status} onChange={(change) => setStatus(change.target.value)}>
-            <option value="draft">draft</option>
-            <option value="live">live</option>
-            <option value="archived">archived</option>
-          </select>
-        </label>
+          <BoothSelect
+            label="Status"
+            value={status}
+            options={[
+              { value: "draft", label: "draft" },
+              { value: "live", label: "live" },
+              { value: "archived", label: "archived" },
+            ]}
+            onChange={setStatus}
+          />
+        </div>
         {afterIdentity ? <div className="md:col-span-3">{afterIdentity}</div> : null}
         <div className="grid gap-2 md:col-span-3">
           <p className="booth-label">Image upload</p>
@@ -340,9 +372,12 @@ export function EventSettings({
               Guests see the title only. Drag the handle or use Up/Down to change kiosk order.
             </p>
           </div>
-          <button type="button" className="booth-button min-h-11 w-full px-4 text-xs sm:w-auto" onClick={openAddTheme}>
-            Add theme
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <SamplePageLink eventId={event.id} />
+            <button type="button" className="booth-button min-h-11 w-full px-4 text-xs sm:w-auto" onClick={openAddTheme}>
+              Add theme
+            </button>
+          </div>
         </div>
 
         {event.themes.length === 0 ? (
@@ -379,6 +414,13 @@ export function EventSettings({
                 >
                   ⋮⋮
                 </button>
+                {theme.hasPreview || theme.hasMasculinePreview || theme.hasFemininePreview ? (
+                  <img
+                    src={`/api/admin/themes/${theme.id}/preview?kind=${theme.hasPreview ? "main" : theme.hasMasculinePreview ? "masculine" : "feminine"}&v=${encodeURIComponent(theme.previewVersion)}`}
+                    alt=""
+                    className="theme-row-preview"
+                  />
+                ) : null}
                 <p className="min-w-0 flex-1 truncate font-medium">
                   {theme.title}
                   {theme.splitLooks ? (
@@ -421,7 +463,7 @@ export function EventSettings({
       {showThemes && themeModal ? (
         <div className="lightbox" onClick={() => setThemeModal(null)} role="presentation">
           <form
-            className="settings-modal"
+            className="settings-modal is-wide"
             onClick={(click) => click.stopPropagation()}
             onSubmit={(form) => void saveThemeModal(form)}
           >
@@ -472,10 +514,14 @@ export function EventSettings({
               <>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm text-muted">
-                    Auto adapt keeps this theme and writes masculine and feminine wardrobe into each prompt.
+                    Auto adapt clones the look you last edited and writes masculine and feminine versions from that text.
                   </p>
                   <AutoAdaptLooksButton
-                    source={themePrompt.trim() || masculinePrompt.trim() || femininePrompt.trim()}
+                    source={
+                      adaptFromLook === "feminine"
+                        ? femininePrompt.trim() || masculinePrompt.trim() || themePrompt.trim()
+                        : masculinePrompt.trim() || femininePrompt.trim() || themePrompt.trim()
+                    }
                     hint={themeTitle}
                     disabled={busy}
                     onMasculine={setMasculinePrompt}
@@ -487,7 +533,10 @@ export function EventSettings({
                     <span className="booth-label mb-0">Masculine prompt</span>
                     <OptimizePromptButton
                       value={masculinePrompt}
-                      onChange={setMasculinePrompt}
+                      onChange={(next) => {
+                        setAdaptFromLook("masculine");
+                        setMasculinePrompt(next);
+                      }}
                       look="masculine"
                       hint={themeTitle}
                       disabled={busy}
@@ -496,7 +545,11 @@ export function EventSettings({
                   <textarea
                     className="booth-input min-h-32 py-3"
                     value={masculinePrompt}
-                    onChange={(change) => setMasculinePrompt(change.target.value)}
+                    onFocus={() => setAdaptFromLook("masculine")}
+                    onChange={(change) => {
+                      setAdaptFromLook("masculine");
+                      setMasculinePrompt(change.target.value);
+                    }}
                     required
                   />
                 </div>
@@ -505,7 +558,10 @@ export function EventSettings({
                     <span className="booth-label mb-0">Feminine prompt</span>
                     <OptimizePromptButton
                       value={femininePrompt}
-                      onChange={setFemininePrompt}
+                      onChange={(next) => {
+                        setAdaptFromLook("feminine");
+                        setFemininePrompt(next);
+                      }}
                       look="feminine"
                       hint={themeTitle}
                       disabled={busy}
@@ -514,7 +570,11 @@ export function EventSettings({
                   <textarea
                     className="booth-input min-h-32 py-3"
                     value={femininePrompt}
-                    onChange={(change) => setFemininePrompt(change.target.value)}
+                    onFocus={() => setAdaptFromLook("feminine")}
+                    onChange={(change) => {
+                      setAdaptFromLook("feminine");
+                      setFemininePrompt(change.target.value);
+                    }}
                     required
                   />
                 </div>
@@ -537,6 +597,23 @@ export function EventSettings({
                   required
                 />
               </div>
+            )}
+
+            {themeModal.mode === "edit" ? (
+              <ThemePreviewControls
+                eventId={event.id}
+                themeId={themeModal.theme.id}
+                splitLooks={splitLooks}
+                initial={{
+                  hasPreview: themeModal.theme.hasPreview,
+                  hasMasculinePreview: themeModal.theme.hasMasculinePreview,
+                  hasFemininePreview: themeModal.theme.hasFemininePreview,
+                  previewVersion: themeModal.theme.previewVersion,
+                }}
+                onChange={(flags) => applyThemePreviews(themeModal.theme.id, flags)}
+              />
+            ) : (
+              <p className="mt-6 text-sm text-muted">Save the theme first, then you can add a preview image.</p>
             )}
 
             {error ? <p className="mt-4 text-sm text-[var(--danger)]">{error}</p> : null}

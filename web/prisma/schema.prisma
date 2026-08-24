@@ -92,6 +92,7 @@ model Job {
   themeId         String    @db.ObjectId
   theme           Theme     @relation(fields: [themeId], references: [id])
   status          String    @default("queued")
+  name            String?
   email           String?
   phone           String?
   consent         Boolean

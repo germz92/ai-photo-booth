@@ -1,5 +1,6 @@
 import { unauthorized } from "@/lib/admin";
 import { listOwnedEventIds, requireUser, setEventOwner } from "@/lib/access";
+import { toEventListItems } from "@/lib/event-list";
 import { prisma, setDocumentFields } from "@/lib/prisma";
 import { clampBatch } from "@/lib/workflow";
 
@@ -16,7 +17,7 @@ export async function GET() {
         include: { _count: { select: { themes: true, jobs: true } } },
       })
     : [];
-  return Response.json({ events });
+  return Response.json({ events: await toEventListItems(events) });
 }
 
 export async function POST(request: Request) {
