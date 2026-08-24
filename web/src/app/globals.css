@@ -136,6 +136,8 @@ body {
 
 .booth-input {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 3rem;
   padding: 0 1rem;
   background: rgba(255, 255, 255, 0.05);
@@ -144,6 +146,49 @@ body {
   border-radius: 4px;
   outline: none;
   font-size: 1rem;
+}
+
+input[type="date"].booth-input,
+input[type="datetime-local"].booth-input,
+input[type="time"].booth-input {
+  display: block;
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  margin-left: 0.25rem;
+  flex: none;
+}
+
+label:has(> input[type="date"]),
+label:has(> input[type="datetime-local"]),
+label:has(> input[type="time"]) {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .booth-input:focus {
@@ -1245,6 +1290,11 @@ select.booth-input {
 .event-create-fields {
   display: grid;
   gap: 0.85rem;
+}
+
+.event-create-fields > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 768px) {

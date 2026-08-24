@@ -85,7 +85,7 @@ export function EventList({ initialEvents }: { initialEvents: EventListItem[] })
       <form className="event-create" onSubmit={(event) => void onCreate(event)}>
         <p className="booth-label mb-0">New event</p>
         <div className="event-create-fields">
-          <label className="grid gap-1 text-sm">
+          <label className="grid min-w-0 gap-1 text-sm">
             Event name
             <input
               className="booth-input"
@@ -95,7 +95,7 @@ export function EventList({ initialEvents }: { initialEvents: EventListItem[] })
               placeholder="Acme Gala"
             />
           </label>
-          <label className="grid gap-1 text-sm">
+          <label className="grid min-w-0 gap-1 text-sm">
             Date
             <input
               className="booth-input"

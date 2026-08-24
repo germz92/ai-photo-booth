@@ -288,12 +288,12 @@ export function EventSettings({
   return (
     <div className="grid gap-8">
       {showEvent ? (
-      <form className="grid gap-4 md:grid-cols-3" onSubmit={(form) => void saveEvent(form)}>
-        <label className="grid gap-1 text-sm md:col-span-1">
+      <form className="grid min-w-0 gap-4 md:grid-cols-3" onSubmit={(form) => void saveEvent(form)}>
+        <label className="grid min-w-0 gap-1 text-sm md:col-span-1">
           Name
           <input className="booth-input" value={name} onChange={(change) => setName(change.target.value)} required />
         </label>
-        <label className="grid gap-1 text-sm">
+        <label className="grid min-w-0 gap-1 text-sm">
           Date
           <input
             className="booth-input"
@@ -303,7 +303,7 @@ export function EventSettings({
             required
           />
         </label>
-        <div className="grid gap-1 text-sm">
+        <div className="grid min-w-0 gap-1 text-sm">
           Status
           <BoothSelect
             label="Status"
