@@ -1,5 +1,14 @@
 import sharp from "sharp";
-import { clampOverlayAxis, clampOverlayScale, overlayPosition, overlayShadowParams } from "./overlay";
+import {
+  clampOverlayAxis,
+  clampOverlayScale,
+  clampOverlayStrokeOpacity,
+  overlayColorRgb,
+  overlayPosition,
+  overlayShadowParams,
+  overlayStrokeRadius,
+  parseOverlayColor,
+} from "./overlay";
 
 export type OverlayStamp = {
   buffer: Buffer;
@@ -8,7 +17,92 @@ export type OverlayStamp = {
   scale: number;
   dropShadow?: boolean;
   shadow?: number;
+  stroke?: boolean;
+  strokeWidth?: number;
+  strokeColor?: string;
+  strokeOpacity?: number;
 };
+
+function dilateAlpha(alpha: Buffer, width: number, height: number, radius: number) {
+  const tmp = Buffer.alloc(width * height);
+  const out = Buffer.alloc(width * height);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      let max = 0;
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width - 1, x + radius);
+      for (let nx = x0; nx <= x1; nx++) max = Math.max(max, alpha[row + nx]);
+      tmp[row + x] = max;
+    }
+  }
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let max = 0;
+      const y0 = Math.max(0, y - radius);
+      const y1 = Math.min(height - 1, y + radius);
+      for (let ny = y0; ny <= y1; ny++) max = Math.max(max, tmp[ny * width + x]);
+      out[y * width + x] = max;
+    }
+  }
+  return out;
+}
+
+async function withPngStroke(
+  logoPng: Buffer,
+  widthPx: number,
+  color: string,
+  opacity: number,
+  imageWidth: number,
+) {
+  const radius = overlayStrokeRadius(widthPx, imageWidth);
+  const pad = radius + 2;
+  const { r, g, b } = overlayColorRgb(color);
+  const alphaScale = clampOverlayStrokeOpacity(opacity);
+
+  const { data, info } = await sharp(logoPng, { failOn: "none" })
+    .ensureAlpha()
+    .extend({
+      top: pad,
+      bottom: pad,
+      left: pad,
+      right: pad,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const channels = info.channels;
+  if (channels < 4) return { buffer: logoPng, pad: 0 };
+
+  const alpha = Buffer.alloc(info.width * info.height);
+  for (let i = 0, p = 0; i < data.length; i += channels, p++) {
+    alpha[p] = data[i + 3];
+  }
+
+  const expanded = dilateAlpha(alpha, info.width, info.height, radius);
+  const stroke = Buffer.alloc(info.width * info.height * 4);
+  for (let p = 0; p < expanded.length; p++) {
+    const cover = expanded[p];
+    if (cover === 0) continue;
+    const i = p * 4;
+    stroke[i] = r;
+    stroke[i + 1] = g;
+    stroke[i + 2] = b;
+    stroke[i + 3] = Math.round(cover * alphaScale);
+  }
+
+  const raw = { width: info.width, height: info.height, channels: 4 as const };
+  const original = await sharp(data, { raw: { width: info.width, height: info.height, channels } })
+    .png()
+    .toBuffer();
+  const buffer = await sharp(stroke, { raw })
+    .composite([{ input: original, left: 0, top: 0 }])
+    .png()
+    .toBuffer();
+
+  return { buffer, pad };
+}
 
 async function withPngDropShadow(logoPng: Buffer, strength: number) {
   const meta = await sharp(logoPng, { failOn: "none" }).ensureAlpha().metadata();
@@ -71,7 +165,7 @@ async function logoComposite(
   options: OverlayStamp,
 ) {
   const scale = clampOverlayScale(options.scale);
-  const logo = await sharp(logoBuffer, { failOn: "none" })
+  let logo: Buffer = await sharp(logoBuffer, { failOn: "none" })
     .rotate()
     .ensureAlpha()
     .resize({ width: Math.max(8, Math.round(imageWidth * scale)), withoutEnlargement: false })
@@ -88,9 +182,25 @@ async function logoComposite(
     clampOverlayAxis(options.x, 0.5),
     clampOverlayAxis(options.y, 0.045),
   );
-  if (!options.dropShadow) return { input: logo, left, top };
-  const shadowed = await withPngDropShadow(logo, options.shadow ?? 0.45);
-  return { input: shadowed.buffer, left: left - shadowed.pad, top: top - shadowed.pad };
+
+  let pad = 0;
+  if (options.stroke) {
+    const stroked = await withPngStroke(
+      logo,
+      options.strokeWidth ?? 3,
+      parseOverlayColor(options.strokeColor),
+      options.strokeOpacity ?? 1,
+      imageWidth,
+    );
+    logo = stroked.buffer;
+    pad += stroked.pad;
+  }
+  if (options.dropShadow) {
+    const shadowed = await withPngDropShadow(logo, options.shadow ?? 0.45);
+    logo = shadowed.buffer;
+    pad += shadowed.pad;
+  }
+  return { input: logo, left: left - pad, top: top - pad };
 }
 
 export async function applyLogoOverlays(
@@ -126,6 +236,10 @@ export async function applyLogoOverlay(
     scale: number;
     dropShadow?: boolean;
     shadow?: number;
+    stroke?: boolean;
+    strokeWidth?: number;
+    strokeColor?: string;
+    strokeOpacity?: number;
     contentType?: string;
   },
 ) {
@@ -139,6 +253,10 @@ export async function applyLogoOverlay(
         scale: options.scale,
         dropShadow: options.dropShadow,
         shadow: options.shadow,
+        stroke: options.stroke,
+        strokeWidth: options.strokeWidth,
+        strokeColor: options.strokeColor,
+        strokeOpacity: options.strokeOpacity,
       },
     ],
     options.contentType,

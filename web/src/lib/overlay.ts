@@ -13,6 +13,10 @@ export const DEFAULT_OVERLAY_PLACEMENT: OverlayPlacement = "top-center";
 export const DEFAULT_OVERLAY_SCALE = 0.18;
 export const DEFAULT_OVERLAY_EDGE = 0.045;
 export const DEFAULT_OVERLAY_SHADOW = 0.45;
+export const DEFAULT_OVERLAY_STROKE_WIDTH = 3;
+export const DEFAULT_OVERLAY_STROKE_COLOR = "#ffffff";
+export const DEFAULT_OVERLAY_STROKE_OPACITY = 1;
+export const OVERLAY_PREVIEW_WIDTH = 240;
 
 export function isOverlayPlacement(value: unknown): value is OverlayPlacement {
   return typeof value === "string" && (OVERLAY_PLACEMENTS as readonly string[]).includes(value);
@@ -50,6 +54,50 @@ export function overlayDropShadowCss(strength: number) {
   const a1 = (0.6 + amount * 0.3).toFixed(2);
   const a2 = (0.3 + amount * 0.25).toFixed(2);
   return `drop-shadow(0 ${y1}px ${b1}px rgba(0, 0, 0, ${a1})) drop-shadow(0 ${y2}px ${b2}px rgba(0, 0, 0, ${a2}))`;
+}
+
+function asFlag(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+export function clampOverlayStrokeWidth(value: unknown, fallback = DEFAULT_OVERLAY_STROKE_WIDTH) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(16, Math.max(1, Math.round(n)));
+}
+
+export function clampOverlayStrokeOpacity(value: unknown, fallback = DEFAULT_OVERLAY_STROKE_OPACITY) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(1, Math.max(0.05, n));
+}
+
+export function parseOverlayColor(value: unknown, fallback = DEFAULT_OVERLAY_STROKE_COLOR) {
+  if (typeof value !== "string") return fallback;
+  const hex = value.trim();
+  const short = hex.match(/^#([0-9a-fA-F]{3})$/);
+  if (short) {
+    const [r, g, b] = short[1].split("");
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  if (/^#([0-9a-fA-F]{6})$/.test(hex)) return hex.toLowerCase();
+  if (/^([0-9a-fA-F]{6})$/.test(hex)) return `#${hex.toLowerCase()}`;
+  return fallback;
+}
+
+export function overlayColorRgb(value: unknown) {
+  const hex = parseOverlayColor(value);
+  return {
+    r: Number.parseInt(hex.slice(1, 3), 16),
+    g: Number.parseInt(hex.slice(3, 5), 16),
+    b: Number.parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+export function overlayStrokeRadius(widthPx: number, imageWidth = 832) {
+  const width = clampOverlayStrokeWidth(widthPx);
+  const scale = imageWidth > 0 ? imageWidth / OVERLAY_PREVIEW_WIDTH : 1;
+  return Math.min(64, Math.max(1, Math.round(width * scale)));
 }
 
 export function clampOverlayAxis(value: unknown, fallback = 0) {
@@ -105,6 +153,10 @@ export type StoredOverlayLayer = {
   y: number;
   dropShadow: boolean;
   shadow: number;
+  stroke: boolean;
+  strokeWidth: number;
+  strokeColor: string;
+  strokeOpacity: number;
 };
 
 const LAYER_PLACEMENTS: OverlayPlacement[] = ["top-center", "bottom-center", "top-right"];
@@ -118,6 +170,10 @@ export function defaultOverlayLayer(index: number): StoredOverlayLayer {
     y: coords.y,
     dropShadow: false,
     shadow: DEFAULT_OVERLAY_SHADOW,
+    stroke: false,
+    strokeWidth: DEFAULT_OVERLAY_STROKE_WIDTH,
+    strokeColor: DEFAULT_OVERLAY_STROKE_COLOR,
+    strokeOpacity: DEFAULT_OVERLAY_STROKE_OPACITY,
   };
 }
 
@@ -131,8 +187,12 @@ export function parseStoredOverlayLayer(raw: unknown, index: number): StoredOver
     scale: clampOverlayScale(row.scale, fallback.scale),
     x: coords.x,
     y: coords.y,
-    dropShadow: row.dropShadow === true || row.dropShadow === "true" || row.dropShadow === 1 || row.dropShadow === "1",
+    dropShadow: asFlag(row.dropShadow),
     shadow: clampOverlayShadow(row.shadow, fallback.shadow),
+    stroke: asFlag(row.stroke),
+    strokeWidth: clampOverlayStrokeWidth(row.strokeWidth, fallback.strokeWidth),
+    strokeColor: parseOverlayColor(row.strokeColor, fallback.strokeColor),
+    strokeOpacity: clampOverlayStrokeOpacity(row.strokeOpacity, fallback.strokeOpacity),
   };
 }
 
@@ -163,6 +223,10 @@ export function parseStoredOverlayLayers(
       y: coords.y,
       dropShadow: false,
       shadow: DEFAULT_OVERLAY_SHADOW,
+      stroke: false,
+      strokeWidth: DEFAULT_OVERLAY_STROKE_WIDTH,
+      strokeColor: DEFAULT_OVERLAY_STROKE_COLOR,
+      strokeOpacity: DEFAULT_OVERLAY_STROKE_OPACITY,
     };
   }
   return layers;
@@ -188,6 +252,10 @@ export function overlayLayersPayload(layers: StoredOverlayLayer[]) {
       y: next.y,
       dropShadow: next.dropShadow,
       shadow: next.shadow,
+      stroke: next.stroke,
+      strokeWidth: next.strokeWidth,
+      strokeColor: next.strokeColor,
+      strokeOpacity: next.strokeOpacity,
     };
   });
 }
@@ -214,6 +282,10 @@ export function publicOverlayLayers(layers: StoredOverlayLayer[], wallLogoKey = 
     y: layer.y,
     dropShadow: layer.dropShadow,
     shadow: layer.shadow,
+    stroke: layer.stroke,
+    strokeWidth: layer.strokeWidth,
+    strokeColor: layer.strokeColor,
+    strokeOpacity: layer.strokeOpacity,
   }));
 }
 

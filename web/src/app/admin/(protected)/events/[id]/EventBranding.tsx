@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import {
   clampOverlayAxis,
   clampOverlayScale,
   clampOverlayShadow,
+  clampOverlayStrokeOpacity,
+  clampOverlayStrokeWidth,
   matchingOverlayPlacement,
+  overlayColorRgb,
   overlayCoordsForPlacement,
   overlayDropShadowCss,
   OVERLAY_PLACEMENTS,
+  parseOverlayColor,
   parseStoredOverlayLayers,
   type OverlayPlacement,
 } from "@/lib/overlay";
@@ -30,6 +34,10 @@ export type OverlayLayerState = {
   y: number;
   dropShadow: boolean;
   shadow: number;
+  stroke: boolean;
+  strokeWidth: number;
+  strokeColor: string;
+  strokeOpacity: number;
 };
 
 export type BrandingState = {
@@ -62,8 +70,109 @@ function layersFromInitial(initial: BrandingState, hasWallLogo: boolean): Overla
       y: incoming?.y ?? layer.y,
       dropShadow: incoming?.dropShadow ?? layer.dropShadow,
       shadow: incoming?.shadow ?? layer.shadow,
+      stroke: incoming?.stroke ?? layer.stroke,
+      strokeWidth: incoming?.strokeWidth ?? layer.strokeWidth,
+      strokeColor: incoming?.strokeColor ?? layer.strokeColor,
+      strokeOpacity: incoming?.strokeOpacity ?? layer.strokeOpacity,
     };
   });
+}
+
+function StrokeColorField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  const [draft, setDraft] = useState(value.toUpperCase());
+  useEffect(() => {
+    setDraft(value.toUpperCase());
+  }, [value]);
+  return (
+    <div className="branding-color-row">
+      <input
+        type="color"
+        className="branding-color-swatch"
+        value={value}
+        onChange={(change) => onChange(parseOverlayColor(change.target.value))}
+        aria-label="Stroke color"
+      />
+      <input
+        className="booth-input branding-color-hex"
+        value={draft}
+        spellCheck={false}
+        onChange={(change) => {
+          const next = change.target.value.startsWith("#") ? change.target.value : `#${change.target.value}`;
+          setDraft(next.toUpperCase());
+          if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(next)) onChange(parseOverlayColor(next));
+        }}
+        onBlur={() => setDraft(value.toUpperCase())}
+      />
+    </div>
+  );
+}
+
+function OverlayLogoMark({
+  src,
+  alt,
+  stroke,
+  strokeWidth,
+  strokeColor,
+  strokeOpacity,
+  dropShadow,
+  shadow,
+}: {
+  src: string;
+  alt: string;
+  stroke: boolean;
+  strokeWidth: number;
+  strokeColor: string;
+  strokeOpacity: number;
+  dropShadow: boolean;
+  shadow: number;
+}) {
+  const reactId = useId().replace(/:/g, "");
+  const filterId = `${reactId}-stroke`;
+  const filters: string[] = [];
+  if (stroke) filters.push(`url(#${filterId})`);
+  if (dropShadow) filters.push(overlayDropShadowCss(shadow));
+  const { r, g, b } = overlayColorRgb(strokeColor);
+  return (
+    <>
+      {stroke ? (
+        <svg className="branding-fx-defs" aria-hidden>
+          <filter
+            id={filterId}
+            x="-50%"
+            y="-50%"
+            width="200%"
+            height="200%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feMorphology
+              in="SourceAlpha"
+              operator="dilate"
+              radius={clampOverlayStrokeWidth(strokeWidth)}
+              result="expanded"
+            />
+            <feFlood
+              floodColor={`rgb(${r}, ${g}, ${b})`}
+              floodOpacity={clampOverlayStrokeOpacity(strokeOpacity)}
+              result="fill"
+            />
+            <feComposite in="fill" in2="expanded" operator="in" result="outline" />
+            <feMerge>
+              <feMergeNode in="outline" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </svg>
+      ) : null}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} style={filters.length ? { filter: filters.join(" ") } : undefined} />
+    </>
+  );
 }
 
 export function EventBranding({
@@ -142,6 +251,10 @@ export function EventBranding({
           y: layer.y,
           dropShadow: layer.dropShadow,
           shadow: layer.shadow,
+          stroke: layer.stroke,
+          strokeWidth: layer.strokeWidth,
+          strokeColor: layer.strokeColor,
+          strokeOpacity: layer.strokeOpacity,
         })),
       }),
     });
@@ -228,6 +341,10 @@ export function EventBranding({
         params.set(`y${suffix}`, String(layer.y));
         params.set(`shadow${suffix}`, layer.dropShadow ? "1" : "0");
         params.set(`shadowAmt${suffix}`, String(layer.shadow));
+        params.set(`stroke${suffix}`, layer.stroke ? "1" : "0");
+        params.set(`strokeW${suffix}`, String(layer.strokeWidth));
+        params.set(`strokeC${suffix}`, layer.strokeColor.replace("#", ""));
+        params.set(`strokeO${suffix}`, String(layer.strokeOpacity));
       });
       const response = await fetch(`/api/admin/events/${eventId}/overlay-comp?${params}`);
       if (!response.ok) {
@@ -332,8 +449,8 @@ export function EventBranding({
         <div>
           <h2 className="text-xl font-light tracking-[0.08em] uppercase">Portrait overlay</h2>
           <p className="mt-1 text-sm text-muted">
-            Stamp up to three logos onto finished portraits. Use a transparent PNG — drop shadow follows the
-            artwork, not the image box.
+            Stamp up to three logos onto finished portraits. Use a transparent PNG — stroke and drop shadow
+            follow the artwork, not the image box.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -382,11 +499,15 @@ export function EventBranding({
                         } as CSSProperties
                       }
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <OverlayLogoMark
                         src={src}
                         alt={`Overlay logo ${index + 1}`}
-                        style={layer.dropShadow ? { filter: overlayDropShadowCss(layer.shadow) } : undefined}
+                        stroke={layer.stroke}
+                        strokeWidth={layer.strokeWidth}
+                        strokeColor={layer.strokeColor}
+                        strokeOpacity={layer.strokeOpacity}
+                        dropShadow={layer.dropShadow}
+                        shadow={layer.shadow}
                       />
                     </span>
                   );
@@ -538,6 +659,67 @@ export function EventBranding({
                   }
                 />
               </label>
+            ) : null}
+
+            <div className="grid gap-2">
+              <p className="booth-label">Stroke</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`kiosk-theme-btn min-w-24 ${current.stroke ? "selected" : ""}`}
+                  onClick={() => updateLayer(selectedLayer, { stroke: true })}
+                >
+                  On
+                </button>
+                <button
+                  type="button"
+                  className={`kiosk-theme-btn min-w-24 ${current.stroke ? "" : "selected"}`}
+                  onClick={() => updateLayer(selectedLayer, { stroke: false })}
+                >
+                  Off
+                </button>
+              </div>
+            </div>
+            {current.stroke ? (
+              <>
+                <label className="grid gap-2 text-sm">
+                  <span className="booth-label">Stroke width {current.strokeWidth}px</span>
+                  <input
+                    className="branding-slider"
+                    type="range"
+                    min={1}
+                    max={16}
+                    value={current.strokeWidth}
+                    onChange={(change) =>
+                      updateLayer(selectedLayer, {
+                        strokeWidth: clampOverlayStrokeWidth(Number(change.target.value)),
+                      })
+                    }
+                  />
+                </label>
+                <div className="grid gap-2">
+                  <p className="booth-label">Stroke color</p>
+                  <StrokeColorField
+                    value={current.strokeColor}
+                    onChange={(strokeColor) => updateLayer(selectedLayer, { strokeColor })}
+                  />
+                </div>
+                <label className="grid gap-2 text-sm">
+                  <span className="booth-label">Stroke opacity {Math.round(current.strokeOpacity * 100)}%</span>
+                  <input
+                    className="branding-slider"
+                    type="range"
+                    min={5}
+                    max={100}
+                    value={Math.round(current.strokeOpacity * 100)}
+                    onChange={(change) =>
+                      updateLayer(selectedLayer, {
+                        strokeOpacity: clampOverlayStrokeOpacity(Number(change.target.value) / 100),
+                      })
+                    }
+                  />
+                </label>
+              </>
             ) : null}
 
             <div className="flex flex-wrap items-center gap-3">

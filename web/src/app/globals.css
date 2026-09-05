@@ -2312,3 +2312,42 @@ select.booth-input {
   width: 100%;
   accent-color: var(--accent);
 }
+
+.branding-fx-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.branding-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.branding-color-swatch {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.branding-color-swatch::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+.branding-color-swatch::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.branding-color-hex {
+  width: 8.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

@@ -51,6 +51,10 @@ export default async function EventSettingsPage({
           y: layer.y,
           dropShadow: layer.dropShadow,
           shadow: layer.shadow,
+          stroke: layer.stroke,
+          strokeWidth: layer.strokeWidth,
+          strokeColor: layer.strokeColor,
+          strokeOpacity: layer.strokeOpacity,
         })),
         hasOverlaySample: Boolean(branding.overlaySampleKey),
       }}

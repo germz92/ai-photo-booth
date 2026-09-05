@@ -71,7 +71,17 @@ export async function PATCH(
     overlayScale?: number;
     overlayX?: number;
     overlayY?: number;
-    overlayLayers?: Array<{ scale?: unknown; x?: unknown; y?: unknown; dropShadow?: unknown; shadow?: unknown }>;
+    overlayLayers?: Array<{
+      scale?: unknown;
+      x?: unknown;
+      y?: unknown;
+      dropShadow?: unknown;
+      shadow?: unknown;
+      stroke?: unknown;
+      strokeWidth?: unknown;
+      strokeColor?: unknown;
+      strokeOpacity?: unknown;
+    }>;
   };
   const data: {
     name?: string;
@@ -115,6 +125,10 @@ export async function PATCH(
             y: next.y ?? layer.y,
             dropShadow: next.dropShadow ?? layer.dropShadow,
             shadow: next.shadow ?? layer.shadow,
+            stroke: next.stroke ?? layer.stroke,
+            strokeWidth: next.strokeWidth ?? layer.strokeWidth,
+            strokeColor: next.strokeColor ?? layer.strokeColor,
+            strokeOpacity: next.strokeOpacity ?? layer.strokeOpacity,
           },
           index,
         );

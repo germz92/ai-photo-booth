@@ -325,6 +325,10 @@ async function overlayJobImages(
             scale: layer.scale,
             dropShadow: layer.dropShadow,
             shadow: layer.shadow,
+            stroke: layer.stroke,
+            strokeWidth: layer.strokeWidth,
+            strokeColor: layer.strokeColor,
+            strokeOpacity: layer.strokeOpacity,
           };
         }),
       )

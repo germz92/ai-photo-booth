@@ -1,6 +1,14 @@
 import { requireOwnedEvent } from "@/lib/access";
 import { applyLogoOverlays } from "@/lib/overlay-apply";
-import { clampOverlayAxis, clampOverlayScale, clampOverlayShadow, overlayLayerSourceKey } from "@/lib/overlay";
+import {
+  clampOverlayAxis,
+  clampOverlayScale,
+  clampOverlayShadow,
+  clampOverlayStrokeOpacity,
+  clampOverlayStrokeWidth,
+  overlayLayerSourceKey,
+  parseOverlayColor,
+} from "@/lib/overlay";
 import { getEventBranding } from "@/lib/prisma";
 import { getObject } from "@/lib/storage";
 
@@ -40,6 +48,10 @@ export async function GET(
           y: layerParam(url, index, "y", layer.y),
           dropShadow: (url.searchParams.get(`shadow${suffix}`) ?? (layer.dropShadow ? "1" : "0")) === "1",
           shadow: clampOverlayShadow(url.searchParams.get(`shadowAmt${suffix}`) ?? layer.shadow),
+          stroke: (url.searchParams.get(`stroke${suffix}`) ?? (layer.stroke ? "1" : "0")) === "1",
+          strokeWidth: clampOverlayStrokeWidth(url.searchParams.get(`strokeW${suffix}`) ?? layer.strokeWidth),
+          strokeColor: parseOverlayColor(url.searchParams.get(`strokeC${suffix}`) ?? layer.strokeColor),
+          strokeOpacity: clampOverlayStrokeOpacity(url.searchParams.get(`strokeO${suffix}`) ?? layer.strokeOpacity),
         };
       }),
     )
