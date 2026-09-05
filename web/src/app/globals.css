@@ -2258,10 +2258,27 @@ select.booth-input {
   left: calc(var(--overlay-x) * 100%);
   top: calc(var(--overlay-y) * 100%);
   width: calc(var(--overlay-scale) * 100%);
-  height: auto;
-  object-fit: contain;
+  line-height: 0;
   transform: translate(calc(var(--overlay-x) * -100%), calc(var(--overlay-y) * -100%));
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55));
+}
+
+.branding-preview-logo img,
+.branding-preview-logo canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.branding-preview-logo.is-selected {
+  z-index: 3;
+  outline: 1px dashed rgba(0, 229, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.branding-layer-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .branding-preview-empty {

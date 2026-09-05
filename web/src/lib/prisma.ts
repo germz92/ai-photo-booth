@@ -1,5 +1,5 @@
 import { PrismaClient } from "@/generated/db";
-import { overlayCoordsFromStored } from "./overlay";
+import { overlayCoordsFromStored, overlayLayerSourceKey, parseStoredOverlayLayers } from "./overlay";
 
 const globalForPrisma = globalThis as unknown as { boothPrisma?: PrismaClient };
 
@@ -77,6 +77,7 @@ export async function getEventBranding(id: string) {
     showWallTitle?: boolean;
     overlayEnabled?: boolean;
     overlayLogoKey?: string;
+    overlayLayers?: unknown;
     overlayPlacement?: string;
     overlayScale?: number;
     overlayPadding?: number;
@@ -93,20 +94,29 @@ export async function getEventBranding(id: string) {
     placement: doc?.overlayPlacement,
     padding: doc?.overlayPadding,
   });
+  const overlayLayers = parseStoredOverlayLayers(doc?.overlayLayers, {
+    logoKey: overlayLogoKey,
+    scale: doc?.overlayScale,
+    x: doc?.overlayX,
+    y: doc?.overlayY,
+    placement: doc?.overlayPlacement,
+    padding: doc?.overlayPadding,
+  });
   return {
     allowUpload: doc?.allowUpload === true,
     wallTitle: typeof doc?.wallTitle === "string" ? doc.wallTitle.trim() : "",
     wallLogoKey,
     showWallTitle: doc?.showWallTitle !== false,
     overlayEnabled: doc?.overlayEnabled === true,
-    overlayLogoKey,
+    overlayLogoKey: overlayLayers[0]?.logoKey || overlayLogoKey,
+    overlayLayers,
     overlayPlacement: typeof doc?.overlayPlacement === "string" ? doc.overlayPlacement : "top-center",
-    overlayScale: typeof doc?.overlayScale === "number" ? doc.overlayScale : 0.18,
+    overlayScale: overlayLayers[0]?.scale ?? (typeof doc?.overlayScale === "number" ? doc.overlayScale : 0.18),
     overlayPadding: typeof doc?.overlayPadding === "number" ? doc.overlayPadding : 0.045,
-    overlayX: coords.x,
-    overlayY: coords.y,
+    overlayX: overlayLayers[0]?.x ?? coords.x,
+    overlayY: overlayLayers[0]?.y ?? coords.y,
     overlaySampleKey,
-    overlaySourceKey: overlayLogoKey || wallLogoKey,
+    overlaySourceKey: overlayLayerSourceKey(overlayLayers[0], 0, wallLogoKey),
   };
 }
 

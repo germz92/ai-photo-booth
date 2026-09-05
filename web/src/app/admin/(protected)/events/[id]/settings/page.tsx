@@ -43,6 +43,15 @@ export default async function EventSettingsPage({
         overlayScale: branding.overlayScale,
         overlayX: branding.overlayX,
         overlayY: branding.overlayY,
+        overlayLayers: branding.overlayLayers.map((layer, index) => ({
+          hasLogo: Boolean(layer.logoKey),
+          usesWallLogo: index === 0 && !layer.logoKey && Boolean(branding.wallLogoKey),
+          scale: layer.scale,
+          x: layer.x,
+          y: layer.y,
+          dropShadow: layer.dropShadow,
+          shadow: layer.shadow,
+        })),
         hasOverlaySample: Boolean(branding.overlaySampleKey),
       }}
     />

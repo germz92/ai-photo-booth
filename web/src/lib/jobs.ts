@@ -1,9 +1,6 @@
 import { deliverJob } from "./delivery";
-import {
-  clampOverlayAxis,
-  clampOverlayScale,
-} from "./overlay";
-import { applyLogoOverlay } from "./overlay-apply";
+import { overlayLayerSourceKey } from "./overlay";
+import { applyLogoOverlays } from "./overlay-apply";
 import { getEventBranding, prisma } from "./prisma";
 import {
   decodeRunpodImage,
@@ -315,20 +312,28 @@ async function overlayJobImages(
 ) {
   try {
     const branding = await getEventBranding(eventId);
-    if (!branding.overlayEnabled || !branding.overlaySourceKey) return images;
-    const logo = await getObject(branding.overlaySourceKey);
-    const scale = clampOverlayScale(branding.overlayScale);
-    const x = clampOverlayAxis(branding.overlayX, 0.5);
-    const y = clampOverlayAxis(branding.overlayY, 0.045);
+    if (!branding.overlayEnabled) return images;
+    const stamps = (
+      await Promise.all(
+        branding.overlayLayers.map(async (layer, index) => {
+          const key = overlayLayerSourceKey(layer, index, branding.wallLogoKey);
+          if (!key) return null;
+          return {
+            buffer: await getObject(key),
+            x: layer.x,
+            y: layer.y,
+            scale: layer.scale,
+            dropShadow: layer.dropShadow,
+            shadow: layer.shadow,
+          };
+        }),
+      )
+    ).filter((item): item is NonNullable<typeof item> => Boolean(item));
+    if (!stamps.length) return images;
     return await Promise.all(
       images.map(async (image) => ({
         contentType: image.contentType,
-        buffer: await applyLogoOverlay(image.buffer, logo, {
-          x,
-          y,
-          scale,
-          contentType: image.contentType,
-        }),
+        buffer: await applyLogoOverlays(image.buffer, stamps, image.contentType),
       })),
     );
   } catch (error) {

@@ -1,9 +1,12 @@
 import { requireOwnedEvent } from "@/lib/access";
 import {
+  brandingOverlayWrite,
   clampOverlayAxis,
   clampOverlayScale,
   isOverlayPlacement,
   matchingOverlayPlacement,
+  parseStoredOverlayLayer,
+  publicOverlayLayers,
 } from "@/lib/overlay";
 import { getEventBranding, prisma, setDocumentFields } from "@/lib/prisma";
 import { attachThemeLooks } from "@/lib/theme-looks-db";
@@ -42,6 +45,7 @@ export async function GET(
       overlayScale: branding.overlayScale,
       overlayX: branding.overlayX,
       overlayY: branding.overlayY,
+      overlayLayers: publicOverlayLayers(branding.overlayLayers, branding.wallLogoKey),
       hasOverlaySample: Boolean(branding.overlaySampleKey),
     },
   });
@@ -67,6 +71,7 @@ export async function PATCH(
     overlayScale?: number;
     overlayX?: number;
     overlayY?: number;
+    overlayLayers?: Array<{ scale?: unknown; x?: unknown; y?: unknown; dropShadow?: unknown; shadow?: unknown }>;
   };
   const data: {
     name?: string;
@@ -97,14 +102,35 @@ export async function PATCH(
     if (typeof body.wallTitle === "string") extras.wallTitle = body.wallTitle.trim();
     if (typeof body.showWallTitle === "boolean") extras.showWallTitle = body.showWallTitle;
     if (typeof body.overlayEnabled === "boolean") extras.overlayEnabled = body.overlayEnabled;
-    if (body.overlayScale != null) extras.overlayScale = clampOverlayScale(body.overlayScale);
-    if (body.overlayX != null) extras.overlayX = clampOverlayAxis(body.overlayX, 0.5);
-    if (body.overlayY != null) extras.overlayY = clampOverlayAxis(body.overlayY, 0.045);
-    if (body.overlayX != null && body.overlayY != null) {
-      extras.overlayPlacement =
-        matchingOverlayPlacement(Number(extras.overlayX), Number(extras.overlayY)) || "custom";
-    } else if (isOverlayPlacement(body.overlayPlacement)) {
-      extras.overlayPlacement = body.overlayPlacement;
+    if (Array.isArray(body.overlayLayers)) {
+      const current = await getEventBranding(id);
+      const layers = current.overlayLayers.map((layer, index) => {
+        const next = body.overlayLayers?.[index];
+        if (!next) return layer;
+        const parsed = parseStoredOverlayLayer(
+          {
+            ...layer,
+            scale: next.scale ?? layer.scale,
+            x: next.x ?? layer.x,
+            y: next.y ?? layer.y,
+            dropShadow: next.dropShadow ?? layer.dropShadow,
+            shadow: next.shadow ?? layer.shadow,
+          },
+          index,
+        );
+        return { ...parsed, logoKey: layer.logoKey };
+      });
+      Object.assign(extras, brandingOverlayWrite(layers));
+    } else {
+      if (body.overlayScale != null) extras.overlayScale = clampOverlayScale(body.overlayScale);
+      if (body.overlayX != null) extras.overlayX = clampOverlayAxis(body.overlayX, 0.5);
+      if (body.overlayY != null) extras.overlayY = clampOverlayAxis(body.overlayY, 0.045);
+      if (body.overlayX != null && body.overlayY != null) {
+        extras.overlayPlacement =
+          matchingOverlayPlacement(Number(extras.overlayX), Number(extras.overlayY)) || "custom";
+      } else if (isOverlayPlacement(body.overlayPlacement)) {
+        extras.overlayPlacement = body.overlayPlacement;
+      }
     }
     if (Object.keys(extras).length > 0) {
       await setDocumentFields("Event", id, extras);
@@ -123,6 +149,7 @@ export async function PATCH(
         overlayScale: branding.overlayScale,
         overlayX: branding.overlayX,
         overlayY: branding.overlayY,
+        overlayLayers: publicOverlayLayers(branding.overlayLayers, branding.wallLogoKey),
         hasOverlaySample: Boolean(branding.overlaySampleKey),
       },
     });
