@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { PhoneField } from "./PhoneField";
+import { PwaInstallHint } from "./PwaInstallHint";
 import { QrCodeImage } from "./QrCodeImage";
 import { APP_NAME } from "@/lib/brand";
 import { imageToJpegDataUrl } from "@/lib/booth-photo";
@@ -191,7 +192,14 @@ export function CaptureBooth({
   useEffect(() => {
     if (!cameraLive) return undefined;
     void startCamera();
+    const resume = () => {
+      if (document.visibilityState === "visible") void startCamera();
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("pageshow", resume);
     return () => {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("pageshow", resume);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     };
@@ -421,6 +429,7 @@ export function CaptureBooth({
           {shutter ? <div className="kiosk-shutter" /> : null}
           <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
           <div className="kiosk-top">
+            <PwaInstallHint compact />
             <div className="kiosk-camera-cue">
               <svg className="kiosk-camera-pointer" viewBox="0 0 64 40" aria-hidden="true">
                 <polygon points="32,3 61,37 3,37" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { PwaInstallHint } from "./PwaInstallHint";
 
 export function CapturePinGate({
   eventName,
@@ -58,6 +59,7 @@ export function CapturePinGate({
           {busy ? "Checking…" : "Continue"}
         </button>
       </form>
+      <PwaInstallHint />
     </main>
   );
 }

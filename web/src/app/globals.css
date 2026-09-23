@@ -2351,3 +2351,58 @@ select.booth-input {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+.pwa-install-hint {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-top: 2rem;
+  max-width: 28rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(0, 229, 255, 0.28);
+  border-radius: 6px;
+  background: rgba(10, 10, 10, 0.82);
+  color: #d8d8d8;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.pwa-install-hint p {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.pwa-install-hint strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.pwa-install-hint.is-compact {
+  margin: 0 auto 0.75rem;
+  max-width: 22rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.72rem;
+}
+
+.pwa-install-dismiss {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
