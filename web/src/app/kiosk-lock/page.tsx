@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { KioskUnlockForm } from "@/components/KioskUnlockForm";
 import { KIOSK_LOCK_COOKIE, parseKioskLockEventId } from "@/lib/kiosk-lock";
+import { getUserAccount } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,14 @@ export default async function KioskLockPage({
   const eventId = parseKioskLockEventId(store.get(KIOSK_LOCK_COOKIE)?.value);
   if (!eventId) redirect("/admin");
   const { next } = await searchParams;
+  const session = await auth();
+  const account = session?.user?.id ? await getUserAccount(session.user.id) : null;
 
-  return <KioskUnlockForm kioskHref={`/kiosk/${eventId}`} nextHref={safeNext(next)} />;
+  return (
+    <KioskUnlockForm
+      kioskHref={`/kiosk/${eventId}`}
+      nextHref={safeNext(next)}
+      email={account?.email}
+    />
+  );
 }

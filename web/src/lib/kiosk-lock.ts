@@ -20,7 +20,8 @@ export function isKioskLockExemptPath(pathname: string) {
     pathname === "/admin/login" ||
     pathname.startsWith("/admin/login/") ||
     pathname === "/kiosk-lock" ||
-    pathname === "/api/kiosk/unlock"
+    pathname === "/api/kiosk/unlock" ||
+    pathname === "/api/kiosk/logout"
   );
 }
 
