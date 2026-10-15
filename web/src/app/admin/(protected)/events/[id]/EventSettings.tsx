@@ -363,6 +363,21 @@ export function EventSettings({
       </form>
       ) : null}
 
+      {showEvent ? (
+        <section className="grid gap-3">
+          <div>
+            <h2 className="text-xl font-light tracking-[0.08em] uppercase">Attendees</h2>
+            <p className="mt-1 text-sm text-muted">Download every guest from this event as a CSV.</p>
+          </div>
+          <a
+            className="booth-button-secondary inline-flex min-h-11 w-full items-center justify-center px-4 text-xs sm:w-auto sm:justify-self-start"
+            href={`/api/admin/events/${event.id}/attendees.csv`}
+          >
+            Export CSV
+          </a>
+        </section>
+      ) : null}
+
       {showThemes ? (
       <section className="grid gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
