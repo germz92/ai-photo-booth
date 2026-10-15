@@ -43,6 +43,9 @@ export function SubmissionQueue({
   const [lightbox, setLightbox] = useState<LightboxState | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const skipFirstFetch = useRef(true);
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export function SubmissionQueue({
       return;
     }
     skipFirstFetch.current = false;
+    setSelected([]);
     let cancelled = false;
     setLoading(true);
     void fetchJobs({})
@@ -129,6 +133,44 @@ export function SubmissionQueue({
     await fetch(`/api/jobs/${id}/resend`, { method: "POST", body: "{}" });
   }
 
+  function toggleSelected(id: string) {
+    setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  const shownIds = jobs.map((job) => job.id);
+  const allShownSelected = shownIds.length > 0 && shownIds.every((id) => selected.includes(id));
+
+  async function deleteSelected() {
+    if (!selected.length || deleting) return;
+    const count = selected.length;
+    if (!window.confirm(`Delete ${count} submission${count === 1 ? "" : "s"}? This removes the portraits.`)) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}/jobs`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selected }),
+      });
+      const json = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(json.error || "Could not delete submissions");
+      const removed = new Set(selected);
+      setJobs((current) => current.filter((job) => !removed.has(job.id)));
+      setSelected([]);
+      if (openId && removed.has(openId)) setOpenId(null);
+      const refreshed = await fetchJobs({});
+      if (refreshed.jobs) {
+        setJobs(refreshed.jobs);
+        setNextCursor(refreshed.nextCursor || null);
+      }
+      if (refreshed.counts) setCounts(refreshed.counts);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete submissions");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const matchingLabel = query
     ? `${counts.matched} matching`
     : `${jobs.length}${nextCursor ? "+" : ""} shown`;
@@ -176,6 +218,30 @@ export function SubmissionQueue({
         </button>
       </div>
 
+      {jobs.length ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="submission-select-all">
+            <input
+              type="checkbox"
+              checked={allShownSelected}
+              onChange={() => setSelected(allShownSelected ? [] : shownIds)}
+            />
+            Select shown
+          </label>
+          {selected.length ? (
+            <button
+              type="button"
+              className="booth-button min-h-10 px-4 text-xs"
+              disabled={deleting}
+              onClick={() => void deleteSelected()}
+            >
+              {deleting ? "Deleting…" : `Delete ${selected.length}`}
+            </button>
+          ) : null}
+          {deleteError ? <p className="text-sm text-[var(--danger)]">{deleteError}</p> : null}
+        </div>
+      ) : null}
+
       {loading && jobs.length === 0 ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : jobs.length === 0 ? (
@@ -185,7 +251,15 @@ export function SubmissionQueue({
       ) : (
         <div className="submissions-grid">
           {jobs.map((job) => (
-            <article key={job.id} className="submission-card">
+            <article key={job.id} className={`submission-card${selected.includes(job.id) ? " is-selected" : ""}`}>
+              <label className="submission-check">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(job.id)}
+                  aria-label={`Select ${job.name || "guest"}`}
+                  onChange={() => toggleSelected(job.id)}
+                />
+              </label>
               <div className={`submission-media${isProcessing(job.status) ? " is-generating" : ""}`}>
                 {job.outputCount > 0 ? (
                   <div className={`submission-hero ${job.outputCount === 1 ? "single" : "multi"}`}>

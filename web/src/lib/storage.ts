@@ -1,6 +1,7 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -68,6 +69,24 @@ export async function getObject(key: string): Promise<Buffer> {
   }
 
   return readFile(localPath(key));
+}
+
+export async function deleteObject(key: string): Promise<void> {
+  if (!key) return;
+  if (isS3()) {
+    await s3().send(
+      new DeleteObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: s3Key(key),
+      }),
+    );
+    return;
+  }
+  try {
+    await unlink(localPath(key));
+  } catch {
+    /* already gone */
+  }
 }
 
 export async function objectExists(key: string): Promise<boolean> {

@@ -1,5 +1,5 @@
 import { requireOwnedEvent } from "@/lib/access";
-import { JOB_PAGE_SIZE, listEventJobs, type JobListFilter } from "@/lib/event-jobs";
+import { deleteEventJobs, JOB_PAGE_SIZE, listEventJobs, type JobListFilter } from "@/lib/event-jobs";
 
 export const runtime = "nodejs";
 
@@ -23,4 +23,20 @@ export async function GET(
     themeId: url.searchParams.get("themeId") || undefined,
   });
   return Response.json(listed);
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  const access = await requireOwnedEvent(id);
+  if (!access.ok) return access.response;
+
+  const body = (await request.json().catch(() => ({}))) as { ids?: unknown };
+  const ids = Array.isArray(body.ids) ? body.ids.filter((value): value is string => typeof value === "string") : [];
+  if (!ids.length) return Response.json({ error: "Choose submissions to delete" }, { status: 400 });
+
+  const deleted = await deleteEventJobs(id, ids);
+  return Response.json({ deleted });
 }

@@ -1,5 +1,8 @@
+import { jobOutputKeys } from "./jobs";
 import { attachJobNames } from "./job-name";
 import { prisma, runMongoCommand } from "./prisma";
+import { deleteObject } from "./storage";
+import { originalThumbKey, outputThumbKey } from "./thumbs";
 import { toQueueJob, type QueueJob } from "@/app/admin/(protected)/events/[id]/queue";
 
 export const JOB_PAGE_SIZE = 24;
@@ -166,4 +169,29 @@ export async function listEventJobs(
     nextCursor,
     counts: { ...counts, matched },
   };
+}
+
+export async function deleteEventJobs(eventId: string, ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => /^[a-f0-9]{24}$/i.test(id)))].slice(0, 200);
+  if (!unique.length) return 0;
+  const jobs = await prisma.job.findMany({
+    where: { eventId, id: { in: unique } },
+    select: { id: true, originalKey: true, outputKey: true, outputKeys: true },
+  });
+  if (!jobs.length) return 0;
+
+  const keys = jobs.flatMap((job) => {
+    const outputs = jobOutputKeys(job);
+    return [
+      job.originalKey,
+      ...outputs,
+      originalThumbKey(job.id),
+      ...outputs.map((_, index) => outputThumbKey(job.id, index)),
+    ].filter((key): key is string => Boolean(key));
+  });
+  await Promise.all(keys.map((key) => deleteObject(key).catch(() => undefined)));
+  const removed = await prisma.job.deleteMany({
+    where: { eventId, id: { in: jobs.map((job) => job.id) } },
+  });
+  return removed.count;
 }

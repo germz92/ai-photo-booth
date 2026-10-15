@@ -1499,11 +1499,45 @@ select.booth-input {
 }
 
 .submission-card {
+  position: relative;
   background: rgba(18, 18, 18, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 12px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.submission-card.is-selected {
+  border-color: rgba(0, 229, 255, 0.55);
+}
+
+.submission-check,
+.submission-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #ccc;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.submission-check {
+  position: absolute;
+  z-index: 3;
+  top: 18px;
+  left: 18px;
+  width: 28px;
+  height: 28px;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.submission-check input,
+.submission-select-all input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .submission-card:hover {
