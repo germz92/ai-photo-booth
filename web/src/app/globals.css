@@ -2406,3 +2406,82 @@ select.booth-input {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.client-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.client-gallery-card {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: #111;
+  color: #bbb;
+  text-align: left;
+  overflow: hidden;
+}
+
+.client-gallery-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--portrait-ratio);
+  object-fit: cover;
+  background: #000;
+}
+
+.client-gallery-card span {
+  padding: 0 0.7rem 0.7rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.client-gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.client-gallery-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.client-gallery-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 420px);
+}
+
+.client-gallery-stage img {
+  width: 100%;
+  max-height: min(78vh, 760px);
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+}
+
+.client-gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.client-gallery-actions p {
+  margin: 0;
+  color: #fff;
+  font-size: 0.85rem;
+}

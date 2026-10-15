@@ -3,6 +3,7 @@
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { BoothSelect } from "@/components/BoothSelect";
+import { ClientGalleryLink } from "./ClientGalleryLink";
 import { SamplePageLink } from "./SamplePageLink";
 import { AutoAdaptLooksButton, OptimizePromptButton } from "@/components/OptimizePromptButton";
 import { ThemePreviewControls } from "@/components/ThemePreviewControls";
@@ -375,6 +376,19 @@ export function EventSettings({
           >
             Export CSV
           </a>
+        </section>
+      ) : null}
+
+      {showEvent ? (
+        <section className="grid gap-3">
+          <div>
+            <h2 className="text-xl font-light tracking-[0.08em] uppercase">Client gallery</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted">
+              Share this link so a client can view every finished portrait and download them all. Guest names and
+              contact details are not included.
+            </p>
+          </div>
+          <ClientGalleryLink eventId={event.id} />
         </section>
       ) : null}
 
